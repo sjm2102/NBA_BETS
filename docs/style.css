@@ -6,30 +6,26 @@
   --muted:#aeb7df;
   --border:rgba(255,255,255,.10);
   --pill:rgba(255,255,255,.08);
+  --accent:#7aa2ff;
 }
 
 *{box-sizing:border-box}
-
 body{
   margin:0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  background:
-    radial-gradient(1200px 600px at 20% 0%, rgba(122,162,255,.18), transparent),
-    radial-gradient(900px 500px at 80% 20%, rgba(122,255,214,.10), transparent),
-    var(--bg);
+  background: radial-gradient(1200px 600px at 20% 0%, rgba(122,162,255,.18), transparent),
+              radial-gradient(900px 500px at 80% 20%, rgba(122,255,214,.10), transparent),
+              var(--bg);
   color:var(--text);
 }
 
 .container{max-width:1100px;margin:0 auto;padding:18px}
-
 .header{
   border-bottom:1px solid var(--border);
   background: linear-gradient(to bottom, rgba(255,255,255,.06), transparent);
 }
-
 h1{margin:0;font-size:28px;letter-spacing:.3px}
 .sub{margin:8px 0 0;color:var(--muted)}
-.small{font-size:13px}
 .meta{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
 
 .pill{
@@ -68,13 +64,7 @@ h2{margin:0;font-size:18px}
   display:flex;
   gap:8px;
   flex-wrap:wrap;
-  align-items:center;
 }
-
-.controls-wide{
-  width:100%;
-}
-
 input, select{
   background: var(--card2);
   border: 1px solid var(--border);
@@ -84,27 +74,14 @@ input, select{
   font-size: 14px;
   outline:none;
 }
-
-input{
-  min-width: 240px;
-  flex: 1 1 240px;
-}
-
-select{
-  flex: 0 0 auto;
-}
-
+input{min-width:260px}
 input::placeholder{color: rgba(232,236,255,.55)}
 
 .table-wrap{
+  margin-top:14px;
   overflow:auto;
   border-radius:12px;
   border:1px solid var(--border);
-}
-
-.table-wrap-flex{
-  flex: 1;
-  min-height: 260px;
 }
 
 table{
@@ -129,7 +106,6 @@ tbody td{
   font-size:14px;
 }
 tbody tr:hover{background: rgba(122,162,255,.08)}
-
 .muted{color:var(--muted)}
 .footnote{
   margin:12px 0 0;
@@ -142,127 +118,8 @@ code{
   border-radius:8px;
   border:1px solid rgba(255,255,255,.10);
 }
-
 .footer{
   margin-top:22px;
   border-top:1px solid var(--border);
   color:var(--muted);
-}
-
-/* =========================
-   3D Wheel (less “zoomed”)
-   ========================= */
-.chart-wheel__controls{
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-
-.wheel-btn{
-  padding:8px 12px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,0.20);
-  background: rgba(255,255,255,0.06);
-  color: inherit;
-  cursor: pointer;
-}
-.wheel-btn:hover{ background: rgba(255,255,255,0.10); }
-.wheel-counter{ font-size:0.95rem; opacity:0.85; }
-
-/* BIGGER perspective reduces distortion */
-.wheel-scene{
-  margin-top:12px;
-  perspective: 1800px;
-  width: 100%;
-  height: min(78vh, 720px);
-  position: relative;
-  overflow: hidden;
-  border-radius: 14px;
-  border:1px solid var(--border);
-  background: rgba(0,0,0,0.10);
-}
-
-.wheel{
-  width:100%;
-  height:100%;
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.wheel-face{
-  position:absolute;
-  inset:0;
-  padding:12px;
-  border-radius:14px;
-  backface-visibility: hidden;
-  display:flex;
-  align-items:stretch;
-  justify-content:stretch;
-}
-
-/* Panel wrapper inside each face */
-.panel{
-  width:100%;
-  height:100%;
-  border-radius:14px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: linear-gradient(to bottom, rgba(255,255,255,.05), transparent), rgba(0,0,0,.12);
-  padding:12px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-
-.panel-head{
-  display:flex;
-  align-items:baseline;
-  gap:10px;
-  flex-wrap:wrap;
-}
-
-.panel-head-stack{
-  flex-direction:column;
-  align-items:stretch;
-}
-
-.panel-title-row{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:12px;
-  flex-wrap:wrap;
-}
-
-.panel-body{
-  flex: 1;
-  min-height: 0; /* IMPORTANT so table area can scroll */
-}
-
-.panel-body-table{
-  display:flex;
-  flex-direction:column;
-}
-
-canvas{
-  width:100%;
-  height:auto;
-  max-height: 300px; /* prevents huge “zoomed” chart */
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.03);
-}
-
-.chart-note{
-  font-size: 13px;
-  margin-top: 6px;
-}
-
-@media (max-width: 900px){
-  table{ min-width: 760px; }
-  input{ min-width: 180px; flex-basis: 180px; }
-}
-
-@media (prefers-reduced-motion: reduce){
-  .wheel{ transition: none; }
 }
