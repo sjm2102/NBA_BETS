@@ -11,7 +11,7 @@
 <body>
   <main class="container">
 
-    <!-- HERO (Visual Hierarchy #1) -->
+    <!-- HERO -->
     <section class="hero">
       <div class="hero-top">
         <div>
@@ -38,7 +38,7 @@
       <p class="hero-note" id="statusText">Loading…</p>
     </section>
 
-    <!-- BETS TO PLACE (Default top section) -->
+    <!-- BETS TO PLACE -->
     <section class="section">
       <div class="section-head">
         <h2>Bets to Place</h2>
@@ -67,38 +67,62 @@
       <p class="hint">Tip: “Bets to Place” pulls the safest picks (highest probability) from your CSV.</p>
     </section>
 
-  <!-- DVP TABLE (replaces All Games) -->
-<section class="section">
-  <div class="section-head">
-    <h2>DvP (Defense vs Position)</h2>
+    <!-- DVP (UPDATED WITH FILTERS) -->
+    <section class="section">
+      <div class="section-head">
+        <h2>DvP (Defense vs Position)</h2>
 
-    <label class="toggle">
-      <input type="checkbox" id="dvpCompact" />
-      Compact view
-    </label>
-  </div>
+        <div class="dvp-controls">
+          <label class="toggle">
+            Team
+            <select id="dvpTeam"></select>
+          </label>
 
-  <div class="table-wrapper">
-    <table id="dvpTable">
-      <thead id="dvpThead">
-        <!-- injected -->
-      </thead>
-      <tbody id="dvpTbody">
-        <!-- injected -->
-      </tbody>
-    </table>
-  </div>
+          <label class="toggle">
+            Position
+            <select id="dvpPosition"></select>
+          </label>
 
-  <p class="hint">This table is loaded directly from <code>dvp.csv</code>.</p>
-</section>
+          <label class="toggle">
+            <input type="checkbox" id="dvpCompact" />
+            Compact view
+          </label>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table id="dvpTable">
+          <thead id="dvpThead"></thead>
+          <tbody id="dvpTbody"></tbody>
+        </table>
+      </div>
+
+      <p class="hint">This table is loaded directly from <code>dvp.csv</code>. Use filters to narrow results.</p>
+    </section>
 
     <footer class="footer">
-      <p>
-        Probabilities are estimates based on your model + data. No guarantees—use responsibly.
-      </p>
+      <p>Probabilities are estimates based on your model + data. No guarantees—use responsibly.</p>
     </footer>
 
   </main>
+
+  <!-- Inline CSS for DVP controls so you don't need to edit style.css -->
+  <style>
+    .dvp-controls{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .dvp-controls select{
+      margin-left: 6px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #151c3a;
+      color: #e8eefc;
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+  </style>
 
   <script src="./app.js"></script>
 </body>
