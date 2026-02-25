@@ -3,7 +3,6 @@
 // ==========================
 const DVP_CSV_URL = "./dvp.csv";
 const BETS_CSV_URL = "./bets_to_place.csv";
-const SAFE_THRESHOLD = 65;
 
 const TOP_ML = 5;       // top 5 moneylines
 const TOP_SPREAD = 5;   // top 5 spreads
@@ -11,6 +10,14 @@ const TOP_SPREAD = 5;   // top 5 spreads
 // display-only in hero for now
 const DEFAULT_ML_RATE = 80;
 const DEFAULT_SPREAD_RATE = 66;
+
+// Risk profile thresholds
+const RISK_THRESHOLDS = {
+  conservative: 70,
+  balanced: 65,
+  aggressive: 60,
+  all: null
+};
 
 // ==========================
 // DOM HOOKS
@@ -22,8 +29,8 @@ const mlRateEl = document.getElementById("mlRate");
 const spreadRateEl = document.getElementById("spreadRate");
 
 const topTbody = document.getElementById("topBetsTbody");
-const safeOnlyTop = document.getElementById("safeOnlyTop");
 const refreshBtn = document.getElementById("refreshBtn");
+const riskProfileSel = document.getElementById("riskProfile");
 
 // DVP hooks
 const dvpThead = document.getElementById("dvpThead");
@@ -42,7 +49,7 @@ let DVP_DATA = [];
 let DVP_TEAM_KEY = null;
 let DVP_POS_KEY = null;
 
-let BETS_ROWS = []; // normalized bets rows: { game, bet, prob, type }
+let BETS_ROWS = []; // normalized bets rows: { game, bet, prob, type, edge }
 
 // ==========================
 // HELPERS
@@ -135,92 +142,144 @@ function findKeyExact(headers, exact) {
 
 function normalizeBetType(raw) {
   const t = String(raw || "").toLowerCase().trim();
-
   if (t.includes("money") || t === "ml" || t.includes("moneyline")) return "Moneyline";
   if (t.includes("spread") || t === "sp" || t.includes("ats")) return "Spread";
-
-  // fallback: if unknown, keep as "Other"
   return raw ? String(raw) : "Other";
 }
 
+function getRiskThreshold() {
+  const key = (riskProfileSel?.value || "balanced").toLowerCase();
+  return Object.prototype.hasOwnProperty.call(RISK_THRESHOLDS, key)
+    ? RISK_THRESHOLDS[key]
+    : RISK_THRESHOLDS.balanced;
+}
+
 // ==========================
-// BETS TO PLACE (top 5 ML + top 5 Spread)
+// BETS TO PLACE (Top 5 ML + Top 5 Spread) + Dividers + Model Edge column
 // ==========================
 function normalizeBets(headers, data) {
+  // Your file keys
   const betKey = findKeyExact(headers, "bet") || findKeyExact(headers, "pick") || findKeyExact(headers, "wager");
   const betTypeKey = findKeyExact(headers, "bet_type");
   const oppKey = findKeyExact(headers, "opponent");
 
+  // probabilities
   const probPctKey = findKeyExact(headers, "probability_pct") || findKeyExact(headers, "prob_pct");
   const probKey = findKeyExact(headers, "probability") || findKeyExact(headers, "prob") || findKeyExact(headers, "chance");
 
+  // model edge / confidence delta (optional)
+  const edgeKey =
+    findKeyExact(headers, "model_edge") ||
+    findKeyExact(headers, "edge") ||
+    findKeyExact(headers, "confidence_delta") ||
+    findKeyExact(headers, "delta");
+
   return data.map(r => {
     const bet = betKey ? r[betKey] : "";
-    const betType = normalizeBetType(betTypeKey ? r[betTypeKey] : "");
+    const type = normalizeBetType(betTypeKey ? r[betTypeKey] : "");
     const opponent = oppKey ? r[oppKey] : "";
 
-    // "HOU ML" -> team = "HOU"
+    // Team inferred from bet, e.g., "HOU ML" -> "HOU"
     const team = String(bet || "").trim().split(/\s+/)[0] || "";
     const game = (team && opponent) ? `${team} vs ${opponent}` : (team || opponent || "—");
 
+    // probability
     let prob = NaN;
     if (probPctKey && r[probPctKey]) {
-      prob = toNumber(r[probPctKey]);
+      prob = toNumber(r[probPctKey]); // "75.2%" -> 75.2
     } else if (probKey && r[probKey] !== "") {
-      prob = toNumber(r[probKey]);
+      prob = toNumber(r[probKey]);    // 0.75 -> convert to 75
       if (Number.isFinite(prob) && prob > 0 && prob <= 1) prob = prob * 100;
+    }
+
+    // edge (can be percent or decimal)
+    let edge = NaN;
+    if (edgeKey && r[edgeKey] !== "") {
+      edge = toNumber(r[edgeKey]);
+      if (Number.isFinite(edge) && edge > -1 && edge < 1) edge = edge * 100; // handle decimals like 0.034
     }
 
     return {
       game: game || "—",
       bet: bet || "—",
       prob: Number.isFinite(prob) ? prob : 0,
-      type: betType
+      type,
+      edge: Number.isFinite(edge) ? edge : null
     };
   }).filter(x => x.game !== "—" && x.bet !== "—");
 }
 
 function pickTopByType(rows) {
-  // optional safe filter first (so you still get 5/5 only if available)
+  const threshold = getRiskThreshold();
   let working = [...rows];
 
-  if (safeOnlyTop?.checked) {
-    working = working.filter(r => r.prob >= SAFE_THRESHOLD);
+  if (threshold != null) {
+    working = working.filter(r => r.prob >= threshold);
   }
 
-  // split by type
   const moneylines = working.filter(r => r.type === "Moneyline").sort((a, b) => b.prob - a.prob);
   const spreads = working.filter(r => r.type === "Spread").sort((a, b) => b.prob - a.prob);
 
-  const topML = moneylines.slice(0, TOP_ML);
-  const topSP = spreads.slice(0, TOP_SPREAD);
+  return {
+    topML: moneylines.slice(0, TOP_ML),
+    topSP: spreads.slice(0, TOP_SPREAD)
+  };
+}
 
-  // combine (ML first, then spreads). If you prefer overall sort, change below.
-  const combined = [...topML, ...topSP];
-
-  return combined;
+function renderDivider(label) {
+  // 4 columns: Game, Bet, Chance, Model Edge
+  return `
+    <tr class="section-row">
+      <td colspan="4">${escapeHtml(label)}</td>
+    </tr>
+  `;
 }
 
 function renderBetsToPlace() {
   topTbody.innerHTML = "";
 
-  const rows = pickTopByType(BETS_ROWS);
+  const { topML, topSP } = pickTopByType(BETS_ROWS);
 
-  if (!rows.length) {
-    topTbody.innerHTML = `<tr><td colspan="3">No rows match this filter.</td></tr>`;
+  if (!topML.length && !topSP.length) {
+    topTbody.innerHTML = `<tr><td colspan="4">No rows match this risk profile.</td></tr>`;
     return;
   }
 
-  topTbody.innerHTML = rows.map(r => {
-    const cls = probClass(r.prob);
-    return `
-      <tr>
-        <td>${escapeHtml(r.game)}</td>
-        <td>${escapeHtml(r.bet)}</td>
-        <td class="num ${cls}">${r.prob.toFixed(0)}%</td>
-      </tr>
-    `;
-  }).join("");
+  let html = "";
+
+  if (topML.length) {
+    html += renderDivider("Top Moneyline Picks");
+    html += topML.map(r => {
+      const cls = probClass(r.prob);
+      const edgeTxt = (r.edge == null) ? "—" : `${r.edge.toFixed(1)}%`;
+      return `
+        <tr>
+          <td>${escapeHtml(r.game)}</td>
+          <td>${escapeHtml(r.bet)}</td>
+          <td class="num ${cls}">${r.prob.toFixed(0)}%</td>
+          <td class="num">${escapeHtml(edgeTxt)}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  if (topSP.length) {
+    html += renderDivider("Top Spread Picks");
+    html += topSP.map(r => {
+      const cls = probClass(r.prob);
+      const edgeTxt = (r.edge == null) ? "—" : `${r.edge.toFixed(1)}%`;
+      return `
+        <tr>
+          <td>${escapeHtml(r.game)}</td>
+          <td>${escapeHtml(r.bet)}</td>
+          <td class="num ${cls}">${r.prob.toFixed(0)}%</td>
+          <td class="num">${escapeHtml(edgeTxt)}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  topTbody.innerHTML = html;
 }
 
 async function loadBetsCSV() {
@@ -339,7 +398,7 @@ async function loadDashboard() {
   } catch (err) {
     console.error(err);
     statusText.textContent = `Error: ${err.message}`;
-    if (topTbody) topTbody.innerHTML = `<tr><td colspan="3">Could not load bets_to_place.csv</td></tr>`;
+    if (topTbody) topTbody.innerHTML = `<tr><td colspan="4">Could not load bets_to_place.csv</td></tr>`;
     if (dvpTbody) dvpTbody.innerHTML = `<tr><td>Could not load dvp.csv</td></tr>`;
   }
 }
@@ -347,8 +406,8 @@ async function loadDashboard() {
 // ==========================
 // EVENTS
 // ==========================
-safeOnlyTop?.addEventListener("change", renderBetsToPlace);
 refreshBtn?.addEventListener("click", loadDashboard);
+riskProfileSel?.addEventListener("change", renderBetsToPlace);
 
 dvpTeamSel?.addEventListener("change", renderDvpTable);
 dvpPosSel?.addEventListener("change", renderDvpTable);
