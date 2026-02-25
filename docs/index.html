@@ -5,132 +5,106 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NBA Bets Dashboard</title>
   <link rel="stylesheet" href="./style.css" />
-  <link rel="manifest" href="./manifest.webmanifest">
-  <meta name="theme-color" content="#0b1020">
-
-  <!-- iOS support -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="NBA Bets">
-  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <meta name="theme-color" content="#0b1020" />
 </head>
 
-<script>
-  // Register Service Worker (PWA)
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./service-worker.js").catch(console.error);
-    });
-  }
-</script>
-
 <body>
-  <header class="header">
-    <div class="container">
-      <h1>NBA Bets Dashboard</h1>
-      <p class="sub">
-        Updated when you push a new <code>bets_to_place.csv</code> into this repo.
-      </p>
-      <div class="meta">
-        <span id="status" class="pill">Loading…</span>
-        <span id="updated" class="pill subtle"></span>
-      </div>
-    </div>
-  </header>
-
   <main class="container">
 
-    <!-- Bets to Place -->
-    <section class="card">
-      <div class="card-top">
+    <!-- HERO (Visual Hierarchy #1) -->
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <h1>NBA Bets – Today’s Best Picks</h1>
+          <p class="hero-sub">Updated <span id="today-date"></span></p>
+        </div>
+
+        <div class="hero-actions">
+          <button class="btn" id="refreshBtn" type="button">Refresh</button>
+        </div>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat-card">
+          <h3>Moneyline Hit Rate</h3>
+          <p class="stat-value" id="mlRate">—</p>
+        </div>
+        <div class="stat-card">
+          <h3>Spread Hit Rate</h3>
+          <p class="stat-value" id="spreadRate">—</p>
+        </div>
+        <div class="stat-card">
+          <h3>Top Bets</h3>
+          <p class="stat-value" id="topBetsCount">—</p>
+        </div>
+      </div>
+
+      <p class="hero-note" id="statusText">Loading…</p>
+    </section>
+
+    <!-- BETS TO PLACE (Default top section) -->
+    <section class="section">
+      <div class="section-head">
         <h2>Bets to Place</h2>
-        <div class="controls">
-          <input id="search" type="search" placeholder="Search (e.g., BOS, -1.5, ML)…" />
-          <select id="typeFilter">
-            <option value="ALL">All types</option>
-            <option value="Moneyline">Moneyline</option>
-            <option value="Spread">Spread</option>
-          </select>
-          <select id="sortBy">
-            <option value="prob_desc">Sort: Probability ↓</option>
-            <option value="prob_asc">Sort: Probability ↑</option>
-            <option value="type">Sort: Type</option>
-            <option value="bet">Sort: Bet</option>
-          </select>
-        </div>
+
+        <label class="toggle">
+          <input type="checkbox" id="safeOnlyTop" />
+          Show only bets ≥ 65%
+        </label>
       </div>
 
-      <div class="table-wrap">
-        <table id="betsTable">
+      <div class="table-wrapper">
+        <table>
           <thead>
             <tr>
+              <th>Game</th>
               <th>Bet</th>
-              <th>Type</th>
-              <th>Probability</th>
-              <th>Opponent</th>
-              <th>Date</th>
-              <th>Game ID</th>
+              <th class="num">Chance to Hit</th>
             </tr>
           </thead>
-          <tbody id="betsBody">
-            <tr><td colspan="6" class="muted">Loading…</td></tr>
+          <tbody id="topBetsTbody">
+            <!-- injected -->
           </tbody>
         </table>
       </div>
 
-      <p class="footnote">
-        Source file: <code>docs/bets_to_place.csv</code>
-      </p>
+      <p class="hint">Tip: “Bets to Place” pulls the safest picks (highest probability) from your CSV.</p>
     </section>
 
-    <!-- DvP Section (NEW) -->
-    <section class="card">
-      <div class="card-top">
-        <h2>DvP (Defense vs Position)</h2>
-        <div class="controls">
-          <select id="dvpPos" title="Position">
-            <option value="PG">PG</option>
-            <option value="SG">SG</option>
-            <option value="SF">SF</option>
-            <option value="PF">PF</option>
-            <option value="C">C</option>
-          </select>
+    <!-- ALL GAMES -->
+    <section class="section">
+      <div class="section-head">
+        <h2>All Games</h2>
 
-          <span id="dvpStatus" class="pill subtle">Loading DvP…</span>
-          <span id="dvpUpdated" class="pill subtle"></span>
-        </div>
+        <label class="toggle">
+          <input type="checkbox" id="safeOnlyAll" />
+          Show only bets ≥ 65%
+        </label>
       </div>
 
-      <div class="table-wrap">
-        <table id="dvpTable">
+      <div class="table-wrapper">
+        <table>
           <thead>
             <tr>
-              <th>Rank</th>
-              <th>Defense</th>
-              <th>PTS Allowed</th>
-              <th>Grade</th>
+              <th>Game</th>
+              <th>Bet</th>
+              <th class="num">Chance to Hit</th>
             </tr>
           </thead>
-          <tbody id="dvpBody">
-            <tr><td colspan="4" class="muted">Loading…</td></tr>
+          <tbody id="allGamesTbody">
+            <!-- injected -->
           </tbody>
         </table>
       </div>
-
-      <p class="footnote">
-        Source file: <code>docs/dvp.csv</code>
-      </p>
     </section>
+
+    <footer class="footer">
+      <p>
+        Probabilities are estimates based on your model + data. No guarantees—use responsibly.
+      </p>
+    </footer>
 
   </main>
-
-  <footer class="footer">
-    <div class="container">
-      <span class="muted">Tip:</span> Run <code>python NBA_v2.py</code> → copy the new CSV into <code>/docs</code> → commit & push.
-      <br />
-      <span class="muted">DvP Tip:</span> Update <code>docs/dvp.csv</code> whenever you refresh your DvP source and push it.
-    </div>
-  </footer>
 
   <script src="./app.js"></script>
 </body>
