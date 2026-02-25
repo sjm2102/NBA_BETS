@@ -6,7 +6,6 @@
   --muted:#aeb7df;
   --border:rgba(255,255,255,.10);
   --pill:rgba(255,255,255,.08);
-  --accent:#7aa2ff;
 }
 
 *{box-sizing:border-box}
@@ -72,6 +71,10 @@ h2{margin:0;font-size:18px}
   align-items:center;
 }
 
+.controls-wide{
+  width:100%;
+}
+
 input, select{
   background: var(--card2);
   border: 1px solid var(--border);
@@ -81,14 +84,27 @@ input, select{
   font-size: 14px;
   outline:none;
 }
-input{min-width:260px}
+
+input{
+  min-width: 240px;
+  flex: 1 1 240px;
+}
+
+select{
+  flex: 0 0 auto;
+}
+
 input::placeholder{color: rgba(232,236,255,.55)}
 
 .table-wrap{
-  margin-top:12px;
   overflow:auto;
   border-radius:12px;
   border:1px solid var(--border);
+}
+
+.table-wrap-flex{
+  flex: 1;
+  min-height: 260px;
 }
 
 table{
@@ -134,7 +150,7 @@ code{
 }
 
 /* =========================
-   3D Wheel (4 panels)
+   3D Wheel (less “zoomed”)
    ========================= */
 .chart-wheel__controls{
   display:flex;
@@ -153,9 +169,10 @@ code{
 .wheel-btn:hover{ background: rgba(255,255,255,0.10); }
 .wheel-counter{ font-size:0.95rem; opacity:0.85; }
 
+/* BIGGER perspective reduces distortion */
 .wheel-scene{
   margin-top:12px;
-  perspective: 1100px;
+  perspective: 1800px;
   width: 100%;
   height: min(78vh, 720px);
   position: relative;
@@ -204,26 +221,33 @@ code{
   flex-wrap:wrap;
 }
 
-.panel-head-row{
+.panel-head-stack{
+  flex-direction:column;
+  align-items:stretch;
+}
+
+.panel-title-row{
+  display:flex;
   align-items:flex-start;
   justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
 }
 
-.panel-scroll{
-  overflow:auto;
-}
-
-/* Keep table area flexible inside panel */
-.panel .table-wrap{
+.panel-body{
   flex: 1;
-  min-height: 260px;
+  min-height: 0; /* IMPORTANT so table area can scroll */
 }
 
-/* Canvas styling */
+.panel-body-table{
+  display:flex;
+  flex-direction:column;
+}
+
 canvas{
   width:100%;
   height:auto;
-  max-height: 340px;
+  max-height: 300px; /* prevents huge “zoomed” chart */
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,.08);
   background: rgba(255,255,255,.03);
@@ -231,12 +255,12 @@ canvas{
 
 .chart-note{
   font-size: 13px;
-  margin-top: 2px;
+  margin-top: 6px;
 }
 
-@media (max-width: 820px){
-  input{ min-width: 220px; }
+@media (max-width: 900px){
   table{ min-width: 760px; }
+  input{ min-width: 180px; flex-basis: 180px; }
 }
 
 @media (prefers-reduced-motion: reduce){
