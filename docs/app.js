@@ -2,7 +2,7 @@
 // CONFIG
 // ==========================
 const DVP_CSV_URL = "./dvp.csv";
-const BETS_CSV_URL = "./bets_to_place.csv"; // <-- REAL bets file
+const BETS_CSV_URL = "./bets_to_place.csv";
 const SAFE_THRESHOLD = 65;
 const TOP_BETS_LIMIT = 10;
 
@@ -125,31 +125,52 @@ function setHeroRates() {
   spreadRateEl.textContent = `${DEFAULT_SPREAD_RATE}%`;
 }
 
-function findKey(headers, candidates) {
+function findKeyExact(headers, exact) {
   const lower = headers.map(h => h.toLowerCase());
-  for (const c of candidates) {
-    const idx = lower.findIndex(h => h === c || h.includes(c));
-    if (idx >= 0) return headers[idx];
-  }
-  return null;
+  const idx = lower.findIndex(h => h === exact.toLowerCase());
+  return idx >= 0 ? headers[idx] : null;
 }
 
 // ==========================
 // BETS TO PLACE (REAL FROM bets_to_place.csv)
 // ==========================
 function normalizeBets(headers, data) {
-  const gameKey = findKey(headers, ["game", "matchup", "teams"]);
-  const betKey  = findKey(headers, ["bet", "pick", "wager", "line"]);
-  const probKey = findKey(headers, ["prob", "probability", "chance", "confidence", "win"]);
+  // Prefer exact keys in YOUR file
+  const betKey = findKeyExact(headers, "bet") || findKeyExact(headers, "pick") || findKeyExact(headers, "wager");
+  const betTypeKey = findKeyExact(headers, "bet_type");
+  const oppKey = findKeyExact(headers, "opponent");
+
+  // Prefer percent string if present
+  const probPctKey = findKeyExact(headers, "probability_pct") || findKeyExact(headers, "prob_pct");
+  const probKey = findKeyExact(headers, "probability") || findKeyExact(headers, "prob") || findKeyExact(headers, "chance");
 
   return data.map(r => {
-    const game = gameKey ? r[gameKey] : "";
     const bet = betKey ? r[betKey] : "";
-    const prob = probKey ? toNumber(r[probKey]) : NaN;
+    const betType = betTypeKey ? r[betTypeKey] : "";
+    const opponent = oppKey ? r[oppKey] : "";
+
+    // Build team from bet (e.g., "HOU ML" -> "HOU")
+    const team = String(bet || "").trim().split(/\s+/)[0] || "";
+
+    // Build a friendly game string
+    const game = (team && opponent) ? `${team} vs ${opponent}` : (team || opponent || "—");
+
+    // Probability: use probability_pct if available, else convert decimal probability -> percent
+    let prob = NaN;
+
+    if (probPctKey && r[probPctKey]) {
+      prob = toNumber(r[probPctKey]); // "75.2%" -> 75.2
+    } else if (probKey && r[probKey] !== "") {
+      prob = toNumber(r[probKey]);    // 0.752431 -> 0.752431
+      if (Number.isFinite(prob) && prob > 0 && prob <= 1) prob = prob * 100; // convert to percent
+    }
+
+    // Bet label: keep your bet as-is, optionally add type
+    const betLabel = betType ? `${bet}` : `${bet}`;
 
     return {
       game: game || "—",
-      bet: bet || "—",
+      bet: betLabel || "—",
       prob: Number.isFinite(prob) ? prob : 0
     };
   }).filter(x => x.game !== "—" && x.bet !== "—");
@@ -297,15 +318,11 @@ async function loadDashboard() {
   statusText.textContent = "Loading…";
 
   try {
-    // load both files
     await Promise.all([loadDvpCSV(), loadBetsCSV()]);
-
     statusText.textContent = `Loaded ${DVP_DATA.length} DvP rows and ${BETS_ROWS.length} bets.`;
   } catch (err) {
     console.error(err);
     statusText.textContent = `Error: ${err.message}`;
-
-    // fallbacks
     if (topTbody) topTbody.innerHTML = `<tr><td colspan="3">Could not load bets_to_place.csv</td></tr>`;
     if (dvpTbody) dvpTbody.innerHTML = `<tr><td>Could not load dvp.csv</td></tr>`;
   }
