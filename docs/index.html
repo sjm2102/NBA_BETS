@@ -71,32 +71,30 @@
       <p class="hint">Tip: “Bets to Place” pulls the safest picks (highest probability) from your CSV.</p>
     </section>
 
-    <!-- ALL GAMES -->
-    <section class="section">
-      <div class="section-head">
-        <h2>All Games</h2>
+  <!-- DVP TABLE (replaces All Games) -->
+<section class="section">
+  <div class="section-head">
+    <h2>DvP (Defense vs Position)</h2>
 
-        <label class="toggle">
-          <input type="checkbox" id="safeOnlyAll" />
-          Show only bets ≥ 65%
-        </label>
-      </div>
+    <label class="toggle">
+      <input type="checkbox" id="dvpCompact" />
+      Compact view
+    </label>
+  </div>
 
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Game</th>
-              <th>Bet</th>
-              <th class="num">Chance to Hit</th>
-            </tr>
-          </thead>
-          <tbody id="allGamesTbody">
-            <!-- injected -->
-          </tbody>
-        </table>
-      </div>
-    </section>
+  <div class="table-wrapper">
+    <table id="dvpTable">
+      <thead id="dvpThead">
+        <!-- injected -->
+      </thead>
+      <tbody id="dvpTbody">
+        <!-- injected -->
+      </tbody>
+    </table>
+  </div>
+
+  <p class="hint">This table is loaded directly from <code>dvp.csv</code>.</p>
+</section>
 
     <footer class="footer">
       <p>
