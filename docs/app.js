@@ -1,170 +1,53 @@
-// -------------------------------
-// NBA Bets Dashboard (with DvP)
-// -------------------------------
+// ==========================
+// CONFIG
+// ==========================
+const CSV_URL = "./dvp.csv";     // keep dvp.csv in the same folder
+const SAFE_THRESHOLD = 65;       // toggle threshold
+const TOP_BETS_LIMIT = 10;
 
-const JSON_PATH = "./bets_to_place.json";
-const DVP_CSV_PATH = "./dvp.csv"; // put dvp.csv in /docs
+// Optional: display these in hero if you don't have a performance CSV yet
+const DEFAULT_ML_RATE = 80;      // set to null if you want "—"
+const DEFAULT_SPREAD_RATE = 66;  // set to null if you want "—"
 
-const statusEl = document.getElementById("status");
-const updatedEl = document.getElementById("updated");
+// ==========================
+// DOM HOOKS
+// ==========================
+const todayDateEl = document.getElementById("today-date");
+const statusText = document.getElementById("statusText");
 
-const searchEl = document.getElementById("search");
-const typeFilterEl = document.getElementById("typeFilter");
-const sortByEl = document.getElementById("sortBy");
+const mlRateEl = document.getElementById("mlRate");
+const spreadRateEl = document.getElementById("spreadRate");
+const topBetsCountEl = document.getElementById("topBetsCount");
 
-const bodyEl = document.getElementById("betsBody");
+const topTbody = document.getElementById("topBetsTbody");
+const allTbody = document.getElementById("allGamesTbody");
 
-// Optional DvP UI (only renders if these exist in index.html)
-const dvpStatusEl = document.getElementById("dvpStatus");   // optional
-const dvpUpdatedEl = document.getElementById("dvpUpdated"); // optional
-const dvpPosEl = document.getElementById("dvpPos");         // optional <select>
-const dvpBodyEl = document.getElementById("dvpBody");       // optional <tbody>
+const safeOnlyTop = document.getElementById("safeOnlyTop");
+const safeOnlyAll = document.getElementById("safeOnlyAll");
+const refreshBtn = document.getElementById("refreshBtn");
 
-let rows = [];    // normalized bets
-let dvpRows = []; // normalized dvp rows
-
-function setStatus(text, kind = "") {
-  statusEl.textContent = text;
-  statusEl.classList.remove("ok", "bad");
-  if (kind) statusEl.classList.add(kind);
-}
-
-function setDvpStatus(text, kind = "") {
-  if (!dvpStatusEl) return;
-  dvpStatusEl.textContent = text;
-  dvpStatusEl.classList.remove("ok", "bad");
-  if (kind) dvpStatusEl.classList.add(kind);
-}
-
-function parseCSV(text) {
-  // Handles basic CSV; assumes your values don't contain commas inside quotes.
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-
-  const headers = lines[0].split(",").map((h) => h.trim());
-  const out = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    const cols = lines[i].split(",").map((c) => c.trim());
-    const obj = {};
-    headers.forEach((h, idx) => (obj[h] = cols[idx] ?? ""));
-    out.push(obj);
-  }
-  return out;
-}
-
-function toProbNumber(obj) {
-  // supports "probability" (0-1) or "probability_pct" like "73.2%"
-  if (obj.probability && obj.probability !== "") {
-    const n = Number(obj.probability);
-    return Number.isFinite(n) ? n : null;
-  }
-  if (obj.probability_pct) {
-    const n = Number(String(obj.probability_pct).replace("%", ""));
-    return Number.isFinite(n) ? n / 100 : null;
-  }
-  return null;
-}
-
-function normalizeBets(raw) {
-  return raw.map((r) => {
-    const p = toProbNumber(r);
-    const pct =
-      p !== null ? (Math.round(p * 1000) / 10).toFixed(1) + "%" : "";
-    return {
-      bet: r.bet || "",
-      bet_type: r.bet_type || "",
-      probability: p,
-      probability_pct: r.probability_pct || pct,
-      opponent: (r.opponent || "").toUpperCase(),
-      date: r.date || "",
-      game_id: r.game_id || "",
-      // Optional fields if you ever add them to bets_to_place.json
-      position: (r.position || "").toUpperCase(), // PG/SG/SF/PF/C
-      team: (r.team || "").toUpperCase(),         // your offense team tricode
-    };
+// ==========================
+// HELPERS
+// ==========================
+function setTodayDate() {
+  todayDateEl.textContent = new Date().toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
   });
 }
 
-function normalizeDvp(raw) {
-  // expects columns from dvp.csv:
-  // defense_team, position, value, rank_pos, matchup_grade
-  return raw.map((r) => ({
-    defense_team: (r.defense_team || r.DEFENSE_TEAM || "").toUpperCase(),
-    position: (r.position || r.POSITION || "").toUpperCase(),
-    value: toNumber(r.value ?? r.VALUE),
-    rank_pos: toNumber(r.rank_pos ?? r.RANK_POS),
-    matchup_grade: (r.matchup_grade || r.MATCHUP_GRADE || "").toUpperCase(),
-  }))
-  .filter((r) => r.defense_team && r.position);
+function probClass(p) {
+  if (p >= 70) return "prob-high";
+  if (p >= 65) return "prob-mid";
+  return "prob-low";
 }
 
-function toNumber(x) {
-  const n = Number(String(x ?? "").trim());
-  return Number.isFinite(n) ? n : null;
-}
-
-function buildDvpIndex(dvpList) {
-  // Keyed by "DEFTEAM|POS"
-  const idx = new Map();
-  for (const r of dvpList) {
-    idx.set(`${r.defense_team}|${r.position}`, r);
-  }
-  return idx;
-}
-
-function renderBets(list) {
-  if (!list.length) {
-    bodyEl.innerHTML = `<tr><td colspan="6" class="muted">No rows to display.</td></tr>`;
-    return;
-  }
-
-  bodyEl.innerHTML = list
-    .map(
-      (r) => `
-    <tr>
-      <td><strong>${escapeHtml(r.bet)}</strong></td>
-      <td>${escapeHtml(r.bet_type)}</td>
-      <td>${escapeHtml(r.probability_pct)}</td>
-      <td>${escapeHtml(r.opponent)}</td>
-      <td>${escapeHtml(r.date)}</td>
-      <td class="muted">${escapeHtml(r.game_id)}</td>
-    </tr>
-  `
-    )
-    .join("");
-}
-
-function renderDvpTable(position = "PG") {
-  if (!dvpBodyEl) return; // no DvP section in HTML
-
-  const pos = (position || "PG").toUpperCase();
-  const list = dvpRows
-    .filter((r) => r.position === pos)
-    .sort((a, b) => (a.rank_pos ?? 999) - (b.rank_pos ?? 999));
-
-  if (!list.length) {
-    dvpBodyEl.innerHTML = `<tr><td colspan="4" class="muted">No DvP rows to display.</td></tr>`;
-    return;
-  }
-
-  dvpBodyEl.innerHTML = list
-    .map(
-      (r) => `
-      <tr>
-        <td>${escapeHtml(r.rank_pos ?? "")}</td>
-        <td><strong>${escapeHtml(r.defense_team)}</strong></td>
-        <td>${escapeHtml(r.value ?? "")}</td>
-        <td>${escapeHtml(r.matchup_grade || "")}</td>
-      </tr>
-    `
-    )
-    .join("");
-}
-
-function escapeHtml(s) {
-  return String(s ?? "")
+function escapeHtml(str) {
+  return String(str ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -172,122 +55,194 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
-function applyFilters() {
-  const q = (searchEl.value || "").toLowerCase().trim();
-  const type = typeFilterEl.value;
-  const sort = sortByEl.value;
+// Very small CSV parser (handles simple CSV including quoted commas)
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cur = "";
+  let inQuotes = false;
 
-  let filtered = [...rows];
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i + 1];
 
-  if (type !== "ALL") {
-    filtered = filtered.filter((r) => (r.bet_type || "") === type);
+    if (c === '"' && inQuotes && next === '"') {
+      cur += '"';
+      i++;
+      continue;
+    }
+
+    if (c === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (c === "," && !inQuotes) {
+      row.push(cur);
+      cur = "";
+      continue;
+    }
+
+    if ((c === "\n" || c === "\r") && !inQuotes) {
+      if (c === "\r" && next === "\n") i++;
+      row.push(cur);
+      cur = "";
+      if (row.some(cell => cell.trim() !== "")) rows.push(row);
+      row = [];
+      continue;
+    }
+
+    cur += c;
   }
 
-  if (q) {
-    filtered = filtered.filter(
-      (r) =>
-        (r.bet || "").toLowerCase().includes(q) ||
-        (r.opponent || "").toLowerCase().includes(q) ||
-        (r.bet_type || "").toLowerCase().includes(q) ||
-        (r.date || "").toLowerCase().includes(q)
-    );
+  row.push(cur);
+  if (row.some(cell => cell.trim() !== "")) rows.push(row);
+
+  if (rows.length === 0) return [];
+  const headers = rows[0].map(h => h.trim());
+  const data = rows.slice(1).map(r => {
+    const obj = {};
+    headers.forEach((h, idx) => obj[h] = (r[idx] ?? "").trim());
+    return obj;
+  });
+  return data;
+}
+
+function findColumn(obj, candidates) {
+  const keys = Object.keys(obj);
+  const lowerKeys = keys.map(k => k.toLowerCase());
+
+  for (const cand of candidates) {
+    const idx = lowerKeys.findIndex(k => k.includes(cand));
+    if (idx !== -1) return keys[idx];
+  }
+  return null;
+}
+
+function toNumber(value) {
+  if (value == null) return NaN;
+  const cleaned = String(value).replace("%", "").trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function normalizeRow(r) {
+  // Try to detect columns intelligently
+  const gameCol = findColumn(r, ["game", "matchup", "teams", "home", "away"]);
+  const betCol  = findColumn(r, ["bet", "pick", "line", "wager"]);
+  const probCol = findColumn(r, ["prob", "chance", "confidence", "win%"]);
+
+  // Build "Game" string
+  let game = r[gameCol] || "";
+  if (!game) {
+    // fallback: combine home/away if present
+    const homeCol = findColumn(r, ["home"]);
+    const awayCol = findColumn(r, ["away"]);
+    if (homeCol || awayCol) game = `${r[awayCol] || ""} vs ${r[homeCol] || ""}`.trim();
   }
 
-  if (sort === "prob_desc") {
-    filtered.sort((a, b) => (b.probability ?? -1) - (a.probability ?? -1));
-  } else if (sort === "prob_asc") {
-    filtered.sort((a, b) => (a.probability ?? 2) - (b.probability ?? 2));
-  } else if (sort === "type") {
-    filtered.sort((a, b) => (a.bet_type || "").localeCompare(b.bet_type || ""));
-  } else if (sort === "bet") {
-    filtered.sort((a, b) => (a.bet || "").localeCompare(b.bet || ""));
+  // Bet string
+  const bet = r[betCol] || r["Bet"] || r["Pick"] || "";
+
+  // Probability numeric
+  const probRaw = probCol ? r[probCol] : "";
+  const prob = toNumber(probRaw);
+
+  return {
+    game: game || "—",
+    bet: bet || "—",
+    prob: Number.isFinite(prob) ? prob : 0
+  };
+}
+
+function renderTable(tbody, rows, safeOnly) {
+  tbody.innerHTML = "";
+
+  const filtered = safeOnly ? rows.filter(x => x.prob >= SAFE_THRESHOLD) : rows;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3">No rows match this filter.</td></tr>`;
+    return;
   }
 
-  renderBets(filtered);
-}
-
-async function loadBetsJson() {
-  const res = await fetch(JSON_PATH, { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status} loading ${JSON_PATH}`);
-  const data = await res.json();
-  return normalizeBets(data);
-}
-
-async function loadDvpCsv() {
-  const res = await fetch(DVP_CSV_PATH, { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status} loading ${DVP_CSV_PATH}`);
-  const text = await res.text();
-  const parsed = parseCSV(text);
-  return normalizeDvp(parsed);
-}
-
-async function main() {
-  // Load Bets
-  try {
-    setStatus("Loading…");
-    rows = await loadBetsJson();
-    setStatus("Loaded ✅", "ok");
-    updatedEl.textContent = `Rows: ${rows.length}`;
-    applyFilters();
-  } catch (err) {
-    console.error(err);
-    setStatus("Missing bets_to_place.json ❌", "bad");
-    updatedEl.textContent = "Put bets_to_place.json in /docs and push it.";
-    bodyEl.innerHTML = `
+  tbody.innerHTML = filtered.map(r => {
+    const cls = probClass(r.prob);
+    return `
       <tr>
-        <td colspan="6" class="muted">
-          Could not load <code>${JSON_PATH}</code>. Make sure it exists in <code>/docs</code>.
-        </td>
+        <td>${escapeHtml(r.game)}</td>
+        <td>${escapeHtml(r.bet)}</td>
+        <td class="num ${cls}">${r.prob.toFixed(0)}%</td>
       </tr>
     `;
-  }
+  }).join("");
+}
 
-  // Load DvP (non-fatal)
+function setHeroRates(rows) {
+  // If you later have real performance stats, you can compute here.
+  // For now we show the constants you told me (80% / 66%) unless you change them.
+  mlRateEl.textContent = (DEFAULT_ML_RATE == null) ? "—" : `${DEFAULT_ML_RATE}%`;
+  spreadRateEl.textContent = (DEFAULT_SPREAD_RATE == null) ? "—" : `${DEFAULT_SPREAD_RATE}%`;
+
+  // Top bets count = min(TOP_BETS_LIMIT, rows.length)
+  topBetsCountEl.textContent = `${Math.min(TOP_BETS_LIMIT, rows.length)}`;
+}
+
+// ==========================
+// MAIN LOAD
+// ==========================
+async function loadDashboard() {
+  setTodayDate();
+  statusText.textContent = "Loading dvp.csv…";
+
   try {
-    setDvpStatus("Loading DvP…");
-    dvpRows = await loadDvpCsv();
-    setDvpStatus("DvP Loaded ✅", "ok");
-    if (dvpUpdatedEl) dvpUpdatedEl.textContent = `Rows: ${dvpRows.length}`;
+    // Cache-bust to avoid GitHub Pages showing old CSV
+    const bust = `t=${Date.now()}`;
+    const res = await fetch(`${CSV_URL}?${bust}`, { cache: "no-store" });
 
-    // Render DvP section if present
-    if (dvpPosEl) {
-      const initial = (dvpPosEl.value || "PG").toUpperCase();
-      renderDvpTable(initial);
-      dvpPosEl.addEventListener("change", (e) =>
-        renderDvpTable(String(e.target.value || "PG"))
-      );
-    } else {
-      // Default render PG if there is a DvP table but no dropdown
-      renderDvpTable("PG");
+    if (!res.ok) {
+      throw new Error(`Fetch failed: ${res.status} ${res.statusText}`);
     }
 
-    // OPTIONAL: If you later add "position" to bets_to_place.json,
-    // you can join DvP onto rows here for display.
-    // const idx = buildDvpIndex(dvpRows);
-    // rows = rows.map(r => {
-    //   if (!r.position) return r;
-    //   const dvp = idx.get(`${r.opponent}|${r.position}`);
-    //   return { ...r, opp_dvp_rank: dvp?.rank_pos ?? null, opp_dvp_grade: dvp?.matchup_grade ?? "" };
-    // });
+    const text = await res.text();
+    const raw = parseCSV(text);
+
+    if (!raw || raw.length === 0) {
+      throw new Error("CSV loaded, but no rows were found. Check dvp.csv formatting.");
+    }
+
+    const rows = raw.map(normalizeRow)
+      .filter(r => r.bet !== "—" && r.game !== "—");
+
+    // Sort by probability descending
+    rows.sort((a, b) => b.prob - a.prob);
+
+    // Bets to place: take top N
+    const topBets = rows.slice(0, TOP_BETS_LIMIT);
+
+    // Hero
+    setHeroRates(rows);
+
+    // Render tables
+    renderTable(topTbody, topBets, safeOnlyTop.checked);
+    renderTable(allTbody, rows, safeOnlyAll.checked);
+
+    statusText.textContent = `Loaded ${rows.length} rows from dvp.csv.`;
 
   } catch (err) {
-    console.warn(err);
-    setDvpStatus("DvP missing (dvp.csv) ⚠️", "bad");
-    if (dvpUpdatedEl) dvpUpdatedEl.textContent = "Put dvp.csv in /docs and push it.";
-    if (dvpBodyEl) {
-      dvpBodyEl.innerHTML = `
-        <tr>
-          <td colspan="4" class="muted">
-            Could not load <code>${DVP_CSV_PATH}</code>. Make sure it exists in <code>/docs</code>.
-          </td>
-        </tr>
-      `;
-    }
+    console.error(err);
+    statusText.textContent = `Error: ${err.message}`;
+    topTbody.innerHTML = `<tr><td colspan="3">Could not load dvp.csv</td></tr>`;
+    allTbody.innerHTML = `<tr><td colspan="3">Could not load dvp.csv</td></tr>`;
+    mlRateEl.textContent = "—";
+    spreadRateEl.textContent = "—";
+    topBetsCountEl.textContent = "—";
   }
 }
 
-searchEl.addEventListener("input", applyFilters);
-typeFilterEl.addEventListener("change", applyFilters);
-sortByEl.addEventListener("change", applyFilters);
+// events
+safeOnlyTop.addEventListener("change", loadDashboard);
+safeOnlyAll.addEventListener("change", loadDashboard);
+refreshBtn.addEventListener("click", loadDashboard);
 
-main();
+// boot
+loadDashboard();
