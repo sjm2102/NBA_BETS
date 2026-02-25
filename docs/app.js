@@ -4,7 +4,9 @@
 const DVP_CSV_URL = "./dvp.csv";
 const BETS_CSV_URL = "./bets_to_place.csv";
 const SAFE_THRESHOLD = 65;
-const TOP_BETS_LIMIT = 10;
+
+const TOP_ML = 5;       // top 5 moneylines
+const TOP_SPREAD = 5;   // top 5 spreads
 
 // display-only in hero for now
 const DEFAULT_ML_RATE = 80;
@@ -40,7 +42,7 @@ let DVP_DATA = [];
 let DVP_TEAM_KEY = null;
 let DVP_POS_KEY = null;
 
-let BETS_ROWS = []; // normalized bets rows: { game, bet, prob }
+let BETS_ROWS = []; // normalized bets rows: { game, bet, prob, type }
 
 // ==========================
 // HELPERS
@@ -131,64 +133,78 @@ function findKeyExact(headers, exact) {
   return idx >= 0 ? headers[idx] : null;
 }
 
+function normalizeBetType(raw) {
+  const t = String(raw || "").toLowerCase().trim();
+
+  if (t.includes("money") || t === "ml" || t.includes("moneyline")) return "Moneyline";
+  if (t.includes("spread") || t === "sp" || t.includes("ats")) return "Spread";
+
+  // fallback: if unknown, keep as "Other"
+  return raw ? String(raw) : "Other";
+}
+
 // ==========================
-// BETS TO PLACE (REAL FROM bets_to_place.csv)
+// BETS TO PLACE (top 5 ML + top 5 Spread)
 // ==========================
 function normalizeBets(headers, data) {
-  // Prefer exact keys in YOUR file
   const betKey = findKeyExact(headers, "bet") || findKeyExact(headers, "pick") || findKeyExact(headers, "wager");
   const betTypeKey = findKeyExact(headers, "bet_type");
   const oppKey = findKeyExact(headers, "opponent");
 
-  // Prefer percent string if present
   const probPctKey = findKeyExact(headers, "probability_pct") || findKeyExact(headers, "prob_pct");
   const probKey = findKeyExact(headers, "probability") || findKeyExact(headers, "prob") || findKeyExact(headers, "chance");
 
   return data.map(r => {
     const bet = betKey ? r[betKey] : "";
-    const betType = betTypeKey ? r[betTypeKey] : "";
+    const betType = normalizeBetType(betTypeKey ? r[betTypeKey] : "");
     const opponent = oppKey ? r[oppKey] : "";
 
-    // Build team from bet (e.g., "HOU ML" -> "HOU")
+    // "HOU ML" -> team = "HOU"
     const team = String(bet || "").trim().split(/\s+/)[0] || "";
-
-    // Build a friendly game string
     const game = (team && opponent) ? `${team} vs ${opponent}` : (team || opponent || "—");
 
-    // Probability: use probability_pct if available, else convert decimal probability -> percent
     let prob = NaN;
-
     if (probPctKey && r[probPctKey]) {
-      prob = toNumber(r[probPctKey]); // "75.2%" -> 75.2
+      prob = toNumber(r[probPctKey]);
     } else if (probKey && r[probKey] !== "") {
-      prob = toNumber(r[probKey]);    // 0.752431 -> 0.752431
-      if (Number.isFinite(prob) && prob > 0 && prob <= 1) prob = prob * 100; // convert to percent
+      prob = toNumber(r[probKey]);
+      if (Number.isFinite(prob) && prob > 0 && prob <= 1) prob = prob * 100;
     }
-
-    // Bet label: keep your bet as-is, optionally add type
-    const betLabel = betType ? `${bet}` : `${bet}`;
 
     return {
       game: game || "—",
-      bet: betLabel || "—",
-      prob: Number.isFinite(prob) ? prob : 0
+      bet: bet || "—",
+      prob: Number.isFinite(prob) ? prob : 0,
+      type: betType
     };
   }).filter(x => x.game !== "—" && x.bet !== "—");
+}
+
+function pickTopByType(rows) {
+  // optional safe filter first (so you still get 5/5 only if available)
+  let working = [...rows];
+
+  if (safeOnlyTop?.checked) {
+    working = working.filter(r => r.prob >= SAFE_THRESHOLD);
+  }
+
+  // split by type
+  const moneylines = working.filter(r => r.type === "Moneyline").sort((a, b) => b.prob - a.prob);
+  const spreads = working.filter(r => r.type === "Spread").sort((a, b) => b.prob - a.prob);
+
+  const topML = moneylines.slice(0, TOP_ML);
+  const topSP = spreads.slice(0, TOP_SPREAD);
+
+  // combine (ML first, then spreads). If you prefer overall sort, change below.
+  const combined = [...topML, ...topSP];
+
+  return combined;
 }
 
 function renderBetsToPlace() {
   topTbody.innerHTML = "";
 
-  let rows = [...BETS_ROWS];
-
-  // sort best first
-  rows.sort((a, b) => b.prob - a.prob);
-
-  // apply toggle filter
-  if (safeOnlyTop?.checked) rows = rows.filter(r => r.prob >= SAFE_THRESHOLD);
-
-  // limit to top 10
-  rows = rows.slice(0, TOP_BETS_LIMIT);
+  const rows = pickTopByType(BETS_ROWS);
 
   if (!rows.length) {
     topTbody.innerHTML = `<tr><td colspan="3">No rows match this filter.</td></tr>`;
