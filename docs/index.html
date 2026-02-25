@@ -43,10 +43,17 @@
       <div class="section-head">
         <h2>Bets to Place</h2>
 
-        <label class="toggle">
-          <input type="checkbox" id="safeOnlyTop" />
-          Show only bets ≥ 65%
-        </label>
+        <div class="bets-controls">
+          <label class="toggle">
+            Risk Profile
+            <select id="riskProfile">
+              <option value="balanced" selected>Balanced (≥ 65%)</option>
+              <option value="conservative">Conservative (≥ 70%)</option>
+              <option value="aggressive">Aggressive (≥ 60%)</option>
+              <option value="all">Show all</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div class="table-wrapper">
@@ -56,6 +63,7 @@
               <th>Game</th>
               <th>Bet</th>
               <th class="num">Chance to Hit</th>
+              <th class="num">Model Edge</th>
             </tr>
           </thead>
           <tbody id="topBetsTbody">
@@ -64,10 +72,10 @@
         </table>
       </div>
 
-      <p class="hint">Tip: “Bets to Place” pulls the safest picks (highest probability) from your CSV.</p>
+      <p class="hint">Shows Top 5 Moneyline + Top 5 Spread picks (filtered by your risk profile).</p>
     </section>
 
-    <!-- DVP (UPDATED WITH FILTERS) -->
+    <!-- DVP (filters already built) -->
     <section class="section">
       <div class="section-head">
         <h2>DvP (Defense vs Position)</h2>
@@ -106,21 +114,28 @@
 
   </main>
 
-  <!-- Inline CSS for DVP controls so you don't need to edit style.css -->
+  <!-- Inline CSS so you don’t have to edit style.css -->
   <style>
-    .dvp-controls{
+    .dvp-controls, .bets-controls{
       display:flex;
       gap:12px;
       flex-wrap:wrap;
       align-items:center;
     }
-    .dvp-controls select{
+    .dvp-controls select, .bets-controls select{
       margin-left: 6px;
       padding: 8px 10px;
       border-radius: 10px;
       background: #151c3a;
       color: #e8eefc;
       border: 1px solid rgba(255,255,255,0.10);
+    }
+    /* Divider rows inside Bets table */
+    .section-row td{
+      background: rgba(255,255,255,0.06);
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
   </style>
 
