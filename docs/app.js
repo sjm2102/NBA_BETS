@@ -6,7 +6,7 @@ const BETS_JSON_PATH = "./bets_to_place.json";
 const BETS_CSV_PATH  = "./bets_to_place.csv";
 const DVP_CSV_PATH   = "./dvp.csv";
 
-// Charts (optional; page should not break if missing)
+// Charts (optional)
 const METRICS_CSV_PATH = "./metrics_history.csv";
 const BUCKET_CSV_PATH  = "./bucket_accuracy_latest.csv";
 
@@ -65,14 +65,11 @@ function toNumber(x) {
   return Number.isFinite(n) ? n : null;
 }
 
-// Basic CSV parser (handles simple CSV without embedded commas in quotes)
 function parseCSV(text) {
   const lines = String(text || "").trim().split(/\r?\n/);
   if (lines.length < 2) return [];
-
   const headers = lines[0].split(",").map(h => h.trim());
   const out = [];
-
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line.trim()) continue;
@@ -96,7 +93,7 @@ async function fetchJson(path) {
   return await res.json();
 }
 
-// ---------- wheel ----------
+// ---------- wheel (LESS ZOOM) ----------
 function initWheel() {
   if (!wheelEl || !wheelPrevBtn || !wheelNextBtn || !wheelCounterEl) return;
   const faces = Array.from(wheelEl.querySelectorAll(".wheel-face"));
@@ -110,8 +107,9 @@ function initWheel() {
     const w = scene.clientWidth;
     const h = scene.clientHeight;
     const size = Math.max(360, Math.min(w, h));
-    // Slightly less deep for 4 panels
-    const radius = Math.round((size * 0.55) / Math.tan(Math.PI / n));
+
+    // IMPORTANT: smaller radius = less “in your face”
+    const radius = Math.round((size * 0.34) / Math.tan(Math.PI / n));
 
     faces.forEach((face, i) => {
       const angle = (360 / n) * i;
@@ -131,18 +129,13 @@ function initWheel() {
   wheelPrevBtn.addEventListener("click", prev);
   wheelNextBtn.addEventListener("click", next);
 
-  // Keyboard
   window.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") prev();
     if (e.key === "ArrowRight") next();
   });
 
-  // Swipe
   let startX = null;
-  wheelEl.addEventListener("touchstart", (e) => {
-    startX = e.touches[0].clientX;
-  }, { passive: true });
-
+  wheelEl.addEventListener("touchstart", (e) => { startX = e.touches[0].clientX; }, { passive: true });
   wheelEl.addEventListener("touchend", (e) => {
     if (startX == null) return;
     const endX = e.changedTouches[0].clientX;
@@ -159,7 +152,6 @@ function initWheel() {
 
 // ---------- bets ----------
 function probFromRow(obj) {
-  // Accept: probability (0-1) or probability_pct like "73.2%"
   if (obj.probability !== undefined && obj.probability !== "") {
     const n = Number(obj.probability);
     return Number.isFinite(n) ? n : null;
@@ -236,20 +228,17 @@ function applyBetFilters() {
 }
 
 async function loadBets() {
-  // Prefer JSON, fallback to CSV
   try {
     const data = await fetchJson(BETS_JSON_PATH);
     return normalizeBets(Array.isArray(data) ? data : []);
   } catch {
     const text = await fetchText(BETS_CSV_PATH);
-    const parsed = parseCSV(text);
-    return normalizeBets(parsed);
+    return normalizeBets(parseCSV(text));
   }
 }
 
 // ---------- dvp ----------
 function normalizeDvp(raw) {
-  // Expected columns (any case is ok): defense_team, position, value, rank_pos, matchup_grade
   return raw.map(r => ({
     defense_team: (r.defense_team || r.DEFENSE_TEAM || "").toUpperCase(),
     position: (r.position || r.POSITION || "").toUpperCase(),
@@ -284,11 +273,10 @@ function renderDvp(position = "PG") {
 
 async function loadDvp() {
   const text = await fetchText(DVP_CSV_PATH);
-  const parsed = parseCSV(text);
-  return normalizeDvp(parsed);
+  return normalizeDvp(parseCSV(text));
 }
 
-// ---------- charts (simple canvas charts, no libs) ----------
+// ---------- charts ----------
 function clearCanvas(cnv) {
   if (!cnv) return;
   const ctx = cnv.getContext("2d");
@@ -305,7 +293,6 @@ function drawLineChart(canvas, seriesList, labels) {
   const mL = 46, mR = 18, mT = 14, mB = 34;
   const x0 = mL, y0 = H - mB, x1 = W - mR, y1 = mT;
 
-  // axes
   ctx.globalAlpha = 0.6;
   ctx.beginPath();
   ctx.moveTo(x0, y1); ctx.lineTo(x0, y0); ctx.lineTo(x1, y0);
@@ -314,15 +301,9 @@ function drawLineChart(canvas, seriesList, labels) {
   ctx.stroke();
   ctx.globalAlpha = 1;
 
-  const yMin = 0, yMax = 1;
-
   const xAt = (i) => labels.length <= 1 ? x0 : x0 + (i * (x1 - x0)) / (labels.length - 1);
-  const yAt = (v) => {
-    const t = (v - yMin) / (yMax - yMin);
-    return y0 - t * (y0 - y1);
-  };
+  const yAt = (v) => y0 - (v * (y0 - y1));
 
-  // grid
   ctx.font = "12px ui-sans-serif, system-ui";
   ctx.fillStyle = "rgba(255,255,255,0.65)";
   ctx.strokeStyle = "rgba(255,255,255,0.10)";
@@ -334,14 +315,12 @@ function drawLineChart(canvas, seriesList, labels) {
     ctx.fillText(`${Math.round(p * 100)}%`, 6, y + 4);
   }
 
-  // x labels sparse
   const step = Math.max(1, Math.floor(labels.length / 6));
   ctx.fillStyle = "rgba(255,255,255,0.6)";
   for (let i = 0; i < labels.length; i += step) {
     ctx.fillText(labels[i], xAt(i) - 14, H - 12);
   }
 
-  // series
   seriesList.forEach((s, idx) => {
     ctx.beginPath();
     s.values.forEach((v, i) => {
@@ -365,7 +344,6 @@ function drawBarChart(canvas, categories, values, counts) {
   const mL = 46, mR = 18, mT = 14, mB = 44;
   const x0 = mL, y0 = H - mB, x1 = W - mR, y1 = mT;
 
-  // axes
   ctx.globalAlpha = 0.6;
   ctx.beginPath();
   ctx.moveTo(x0, y1); ctx.lineTo(x0, y0); ctx.lineTo(x1, y0);
@@ -376,10 +354,10 @@ function drawBarChart(canvas, categories, values, counts) {
 
   const yAt = (v) => y0 - (v * (y0 - y1));
 
-  // grid
   ctx.font = "12px ui-sans-serif, system-ui";
   ctx.fillStyle = "rgba(255,255,255,0.65)";
   ctx.strokeStyle = "rgba(255,255,255,0.10)";
+
   for (let p = 0; p <= 1.0001; p += 0.25) {
     const y = yAt(p);
     ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
@@ -502,11 +480,8 @@ async function loadAndRenderCharts() {
 // ---------- main ----------
 async function main() {
   initWheel();
-
-  // Charts (non-fatal)
   await loadAndRenderCharts();
 
-  // Bets
   try {
     setPill(statusEl, "Loading…");
     betsRows = await loadBets();
@@ -514,7 +489,6 @@ async function main() {
     if (updatedEl) updatedEl.textContent = `Rows: ${betsRows.length}`;
 
     applyBetFilters();
-
     if (searchEl) searchEl.addEventListener("input", applyBetFilters);
     if (typeFilterEl) typeFilterEl.addEventListener("change", applyBetFilters);
     if (sortByEl) sortByEl.addEventListener("change", applyBetFilters);
@@ -533,7 +507,6 @@ async function main() {
     }
   }
 
-  // DvP
   try {
     setPill(dvpStatusEl, "Loading DvP…");
     dvpRows = await loadDvp();
@@ -542,7 +515,6 @@ async function main() {
 
     const initial = (dvpPosEl?.value || "PG").toUpperCase();
     renderDvp(initial);
-
     if (dvpPosEl) {
       dvpPosEl.addEventListener("change", (e) => renderDvp(String(e.target.value || "PG")));
     }
