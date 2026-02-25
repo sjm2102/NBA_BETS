@@ -31,6 +31,7 @@
       <p class="sub">
         Public site (docs only). Data updates when you push new files into <code>/docs</code>.
       </p>
+
       <div class="meta">
         <span id="status" class="pill">Loading…</span>
         <span id="updated" class="pill subtle"></span>
@@ -46,7 +47,6 @@
 
   <main class="container">
 
-    <!-- ONE Wheel: Charts + Bets + DvP -->
     <section class="card">
       <div class="card-top">
         <h2>Dashboard Wheel</h2>
@@ -73,8 +73,10 @@
                 <span class="muted">(overall / ML / spread)</span>
               </div>
 
-              <canvas id="metricsChart" width="980" height="340"></canvas>
-              <div id="metricsChartNote" class="muted chart-note"></div>
+              <div class="panel-body">
+                <canvas id="metricsChart" width="980" height="320"></canvas>
+                <div id="metricsChartNote" class="muted chart-note"></div>
+              </div>
 
               <div class="footnote">
                 Source: <code>docs/metrics_history.csv</code>
@@ -90,8 +92,10 @@
                 <span class="muted">(mean hit rate by bucket)</span>
               </div>
 
-              <canvas id="bucketChart" width="980" height="340"></canvas>
-              <div id="bucketChartNote" class="muted chart-note"></div>
+              <div class="panel-body">
+                <canvas id="bucketChart" width="980" height="320"></canvas>
+                <div id="bucketChartNote" class="muted chart-note"></div>
+              </div>
 
               <div class="footnote">
                 Source: <code>docs/bucket_accuracy_latest.csv</code>
@@ -101,14 +105,17 @@
 
           <!-- FACE 3: Bets to Place -->
           <div class="wheel-face" data-title="Bets">
-            <div class="panel panel-scroll">
-              <div class="panel-head panel-head-row">
-                <div>
-                  <strong>Bets to Place</strong>
-                  <span class="muted">(search + filter + sort)</span>
+            <div class="panel">
+              <div class="panel-head panel-head-stack">
+                <div class="panel-title-row">
+                  <div>
+                    <strong>Bets to Place</strong>
+                    <span class="muted">(search + filter + sort)</span>
+                  </div>
                 </div>
 
-                <div class="controls">
+                <!-- Controls ALWAYS visible -->
+                <div class="controls controls-wide">
                   <input id="search" type="search" placeholder="Search (e.g., BOS, -1.5, ML)…" />
                   <select id="typeFilter" title="Type">
                     <option value="ALL">All types</option>
@@ -124,22 +131,25 @@
                 </div>
               </div>
 
-              <div class="table-wrap">
-                <table id="betsTable">
-                  <thead>
-                    <tr>
-                      <th>Bet</th>
-                      <th>Type</th>
-                      <th>Probability</th>
-                      <th>Opponent</th>
-                      <th>Date</th>
-                      <th>Game ID</th>
-                    </tr>
-                  </thead>
-                  <tbody id="betsBody">
-                    <tr><td colspan="6" class="muted">Loading…</td></tr>
-                  </tbody>
-                </table>
+              <!-- Only the table scrolls -->
+              <div class="panel-body panel-body-table">
+                <div class="table-wrap table-wrap-flex">
+                  <table id="betsTable">
+                    <thead>
+                      <tr>
+                        <th>Bet</th>
+                        <th>Type</th>
+                        <th>Probability</th>
+                        <th>Opponent</th>
+                        <th>Date</th>
+                        <th>Game ID</th>
+                      </tr>
+                    </thead>
+                    <tbody id="betsBody">
+                      <tr><td colspan="6" class="muted">Loading…</td></tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div class="footnote">
@@ -150,38 +160,44 @@
 
           <!-- FACE 4: DvP -->
           <div class="wheel-face" data-title="DvP">
-            <div class="panel panel-scroll">
-              <div class="panel-head panel-head-row">
-                <div>
-                  <strong>DvP (Defense vs Position)</strong>
-                  <span class="muted">(by position)</span>
-                </div>
+            <div class="panel">
+              <div class="panel-head panel-head-stack">
+                <div class="panel-title-row">
+                  <div>
+                    <strong>DvP (Defense vs Position)</strong>
+                    <span class="muted">(by position)</span>
+                  </div>
 
-                <div class="controls">
-                  <select id="dvpPos" title="Position">
-                    <option value="PG">PG</option>
-                    <option value="SG">SG</option>
-                    <option value="SF">SF</option>
-                    <option value="PF">PF</option>
-                    <option value="C">C</option>
-                  </select>
+                  <!-- Always visible -->
+                  <div class="controls">
+                    <select id="dvpPos" title="Position">
+                      <option value="PG">PG</option>
+                      <option value="SG">SG</option>
+                      <option value="SF">SF</option>
+                      <option value="PF">PF</option>
+                      <option value="C">C</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div class="table-wrap">
-                <table id="dvpTable">
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Defense</th>
-                      <th>PTS Allowed</th>
-                      <th>Grade</th>
-                    </tr>
-                  </thead>
-                  <tbody id="dvpBody">
-                    <tr><td colspan="4" class="muted">Loading…</td></tr>
-                  </tbody>
-                </table>
+              <!-- Only the table scrolls -->
+              <div class="panel-body panel-body-table">
+                <div class="table-wrap table-wrap-flex">
+                  <table id="dvpTable">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Defense</th>
+                        <th>PTS Allowed</th>
+                        <th>Grade</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dvpBody">
+                      <tr><td colspan="4" class="muted">Loading…</td></tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div class="footnote">
