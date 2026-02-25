@@ -40,6 +40,61 @@
 
   <main class="container">
 
+    <!-- Charts Wheel (NEW) -->
+    <section class="card">
+      <div class="card-top">
+        <h2>Performance Charts</h2>
+        <div class="controls">
+          <span id="chartsStatus" class="pill subtle">Loading charts…</span>
+          <span id="chartsUpdated" class="pill subtle"></span>
+        </div>
+      </div>
+
+      <div class="chart-wheel">
+        <div class="chart-wheel__header">
+          <div class="muted">Use arrows (or swipe) to rotate charts</div>
+          <div class="chart-wheel__controls">
+            <button class="wheel-btn" id="wheelPrev" aria-label="Previous chart">←</button>
+            <span class="wheel-counter" id="wheelCounter">1 / 2</span>
+            <button class="wheel-btn" id="wheelNext" aria-label="Next chart">→</button>
+          </div>
+        </div>
+
+        <div class="wheel-scene" aria-live="polite">
+          <div class="wheel" id="chartWheel">
+            <!-- Face 1: Accuracy over time -->
+            <div class="wheel-face">
+              <div class="chart-card">
+                <div class="chart-title">
+                  <strong>Accuracy Over Time</strong>
+                  <span class="muted">(overall / ML / spread)</span>
+                </div>
+                <canvas id="metricsChart" width="980" height="340"></canvas>
+                <div id="metricsChartNote" class="muted chart-note"></div>
+              </div>
+            </div>
+
+            <!-- Face 2: Bucket accuracy -->
+            <div class="wheel-face">
+              <div class="chart-card">
+                <div class="chart-title">
+                  <strong>Probability Bucket Accuracy</strong>
+                  <span class="muted">(mean hit rate by bucket)</span>
+                </div>
+                <canvas id="bucketChart" width="980" height="340"></canvas>
+                <div id="bucketChartNote" class="muted chart-note"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <p class="footnote">
+        Source files: <code>docs/metrics_history.csv</code> and <code>docs/bucket_accuracy_latest.csv</code>
+      </p>
+    </section>
+
     <!-- Bets to Place -->
     <section class="card">
       <div class="card-top">
@@ -83,7 +138,7 @@
       </p>
     </section>
 
-    <!-- DvP Section (NEW) -->
+    <!-- DvP Section -->
     <section class="card">
       <div class="card-top">
         <h2>DvP (Defense vs Position)</h2>
