@@ -17,7 +17,6 @@ const statusText = document.getElementById("statusText");
 
 const mlRateEl = document.getElementById("mlRate");
 const spreadRateEl = document.getElementById("spreadRate");
-const topBetsCountEl = document.getElementById("topBetsCount");
 
 const topTbody = document.getElementById("topBetsTbody");
 const safeOnlyTop = document.getElementById("safeOnlyTop");
