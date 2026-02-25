@@ -29,188 +29,96 @@
     <div class="container">
       <h1>NBA Bets Dashboard</h1>
       <p class="sub">
-        Public site (docs only). Data updates when you push new files into <code>/docs</code>.
+        Updated when you push a new <code>bets_to_place.csv</code> into this repo.
       </p>
-
       <div class="meta">
         <span id="status" class="pill">Loading…</span>
         <span id="updated" class="pill subtle"></span>
-
-        <span id="chartsStatus" class="pill subtle">Loading charts…</span>
-        <span id="chartsUpdated" class="pill subtle"></span>
-
-        <span id="dvpStatus" class="pill subtle">Loading DvP…</span>
-        <span id="dvpUpdated" class="pill subtle"></span>
       </div>
     </div>
   </header>
 
   <main class="container">
 
+    <!-- Bets to Place -->
     <section class="card">
       <div class="card-top">
-        <h2>Dashboard Wheel</h2>
-
-        <div class="chart-wheel__controls">
-          <button class="wheel-btn" id="wheelPrev" aria-label="Previous panel">←</button>
-          <span class="wheel-counter" id="wheelCounter">1 / 4</span>
-          <button class="wheel-btn" id="wheelNext" aria-label="Next panel">→</button>
+        <h2>Bets to Place</h2>
+        <div class="controls">
+          <input id="search" type="search" placeholder="Search (e.g., BOS, -1.5, ML)…" />
+          <select id="typeFilter">
+            <option value="ALL">All types</option>
+            <option value="Moneyline">Moneyline</option>
+            <option value="Spread">Spread</option>
+          </select>
+          <select id="sortBy">
+            <option value="prob_desc">Sort: Probability ↓</option>
+            <option value="prob_asc">Sort: Probability ↑</option>
+            <option value="type">Sort: Type</option>
+            <option value="bet">Sort: Bet</option>
+          </select>
         </div>
       </div>
 
-      <div class="muted small">
-        Tip: use arrows, keyboard (← →), or swipe to rotate panels.
-      </div>
-
-      <div class="wheel-scene" aria-live="polite">
-        <div class="wheel" id="chartWheel">
-
-          <!-- FACE 1: Accuracy over time -->
-          <div class="wheel-face" data-title="Accuracy">
-            <div class="panel">
-              <div class="panel-head">
-                <strong>Accuracy Over Time</strong>
-                <span class="muted">(overall / ML / spread)</span>
-              </div>
-
-              <div class="panel-body">
-                <canvas id="metricsChart" width="980" height="320"></canvas>
-                <div id="metricsChartNote" class="muted chart-note"></div>
-              </div>
-
-              <div class="footnote">
-                Source: <code>docs/metrics_history.csv</code>
-              </div>
-            </div>
-          </div>
-
-          <!-- FACE 2: Bucket accuracy -->
-          <div class="wheel-face" data-title="Buckets">
-            <div class="panel">
-              <div class="panel-head">
-                <strong>Probability Bucket Accuracy</strong>
-                <span class="muted">(mean hit rate by bucket)</span>
-              </div>
-
-              <div class="panel-body">
-                <canvas id="bucketChart" width="980" height="320"></canvas>
-                <div id="bucketChartNote" class="muted chart-note"></div>
-              </div>
-
-              <div class="footnote">
-                Source: <code>docs/bucket_accuracy_latest.csv</code>
-              </div>
-            </div>
-          </div>
-
-          <!-- FACE 3: Bets to Place -->
-          <div class="wheel-face" data-title="Bets">
-            <div class="panel">
-              <div class="panel-head panel-head-stack">
-                <div class="panel-title-row">
-                  <div>
-                    <strong>Bets to Place</strong>
-                    <span class="muted">(search + filter + sort)</span>
-                  </div>
-                </div>
-
-                <!-- Controls ALWAYS visible -->
-                <div class="controls controls-wide">
-                  <input id="search" type="search" placeholder="Search (e.g., BOS, -1.5, ML)…" />
-                  <select id="typeFilter" title="Type">
-                    <option value="ALL">All types</option>
-                    <option value="Moneyline">Moneyline</option>
-                    <option value="Spread">Spread</option>
-                  </select>
-                  <select id="sortBy" title="Sort">
-                    <option value="prob_desc">Prob ↓</option>
-                    <option value="prob_asc">Prob ↑</option>
-                    <option value="type">Type</option>
-                    <option value="bet">Bet</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Only the table scrolls -->
-              <div class="panel-body panel-body-table">
-                <div class="table-wrap table-wrap-flex">
-                  <table id="betsTable">
-                    <thead>
-                      <tr>
-                        <th>Bet</th>
-                        <th>Type</th>
-                        <th>Probability</th>
-                        <th>Opponent</th>
-                        <th>Date</th>
-                        <th>Game ID</th>
-                      </tr>
-                    </thead>
-                    <tbody id="betsBody">
-                      <tr><td colspan="6" class="muted">Loading…</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div class="footnote">
-                Source: <code>docs/bets_to_place.json</code> (preferred) or <code>docs/bets_to_place.csv</code>
-              </div>
-            </div>
-          </div>
-
-          <!-- FACE 4: DvP -->
-          <div class="wheel-face" data-title="DvP">
-            <div class="panel">
-              <div class="panel-head panel-head-stack">
-                <div class="panel-title-row">
-                  <div>
-                    <strong>DvP (Defense vs Position)</strong>
-                    <span class="muted">(by position)</span>
-                  </div>
-
-                  <!-- Always visible -->
-                  <div class="controls">
-                    <select id="dvpPos" title="Position">
-                      <option value="PG">PG</option>
-                      <option value="SG">SG</option>
-                      <option value="SF">SF</option>
-                      <option value="PF">PF</option>
-                      <option value="C">C</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Only the table scrolls -->
-              <div class="panel-body panel-body-table">
-                <div class="table-wrap table-wrap-flex">
-                  <table id="dvpTable">
-                    <thead>
-                      <tr>
-                        <th>Rank</th>
-                        <th>Defense</th>
-                        <th>PTS Allowed</th>
-                        <th>Grade</th>
-                      </tr>
-                    </thead>
-                    <tbody id="dvpBody">
-                      <tr><td colspan="4" class="muted">Loading…</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div class="footnote">
-                Source: <code>docs/dvp.csv</code>
-              </div>
-            </div>
-          </div>
-
-        </div>
+      <div class="table-wrap">
+        <table id="betsTable">
+          <thead>
+            <tr>
+              <th>Bet</th>
+              <th>Type</th>
+              <th>Probability</th>
+              <th>Opponent</th>
+              <th>Date</th>
+              <th>Game ID</th>
+            </tr>
+          </thead>
+          <tbody id="betsBody">
+            <tr><td colspan="6" class="muted">Loading…</td></tr>
+          </tbody>
+        </table>
       </div>
 
       <p class="footnote">
-        If updates don’t show immediately, clear site data (service worker cache) and reload.
+        Source file: <code>docs/bets_to_place.csv</code>
+      </p>
+    </section>
+
+    <!-- DvP Section (NEW) -->
+    <section class="card">
+      <div class="card-top">
+        <h2>DvP (Defense vs Position)</h2>
+        <div class="controls">
+          <select id="dvpPos" title="Position">
+            <option value="PG">PG</option>
+            <option value="SG">SG</option>
+            <option value="SF">SF</option>
+            <option value="PF">PF</option>
+            <option value="C">C</option>
+          </select>
+
+          <span id="dvpStatus" class="pill subtle">Loading DvP…</span>
+          <span id="dvpUpdated" class="pill subtle"></span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="dvpTable">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Defense</th>
+              <th>PTS Allowed</th>
+              <th>Grade</th>
+            </tr>
+          </thead>
+          <tbody id="dvpBody">
+            <tr><td colspan="4" class="muted">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="footnote">
+        Source file: <code>docs/dvp.csv</code>
       </p>
     </section>
 
@@ -218,8 +126,9 @@
 
   <footer class="footer">
     <div class="container">
-      <span class="muted">Daily flow:</span>
-      Run <code>morning_eval.py</code> → push chart CSVs → run <code>NBA_v2.py</code> → push bets JSON/CSV.
+      <span class="muted">Tip:</span> Run <code>python NBA_v2.py</code> → copy the new CSV into <code>/docs</code> → commit & push.
+      <br />
+      <span class="muted">DvP Tip:</span> Update <code>docs/dvp.csv</code> whenever you refresh your DvP source and push it.
     </div>
   </footer>
 
