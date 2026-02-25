@@ -149,11 +149,18 @@ function renderGenericTable(headers, data) {
 // Optional: keep your “Bets to Place” table logic (demo mode)
 // If you want it driven by another file later, we can wire that up.
 function renderTopBetsPlaceholder() {
-  const sample = [
-    { game: "HOU vs DAL", bet: "HOU -1.5", prob: 68 },
-    { game: "LAL vs DEN", bet: "DEN ML", prob: 72 },
-    { game: "NYK vs BOS", bet: "NYK +5.5", prob: 61 }
-  ];
+ const sample = [
+  { game: "LAL vs DEN", bet: "DEN ML", prob: 72 },
+  { game: "HOU vs DAL", bet: "HOU -1.5", prob: 68 },
+  { game: "NYK vs BOS", bet: "NYK +5.5", prob: 61 },
+  { game: "MIA vs ORL", bet: "MIA ML", prob: 70 },
+  { game: "GSW vs PHX", bet: "PHX +4.5", prob: 66 },
+  { game: "MIL vs CHI", bet: "MIL ML", prob: 69 },
+  { game: "CLE vs IND", bet: "CLE -2.5", prob: 65 },
+  { game: "DAL vs SAC", bet: "DAL ML", prob: 67 },
+  { game: "BOS vs TOR", bet: "BOS -3.5", prob: 71 },
+  { game: "OKC vs MEM", bet: "OKC +1.5", prob: 66 }
+];
 
   const filtered = safeOnlyTop.checked ? sample.filter(x => x.prob >= SAFE_THRESHOLD) : sample;
 
