@@ -2,6 +2,7 @@
 // CONFIG
 // ==========================
 const DVP_CSV_URL = "./dvp.csv";
+const BETS_CSV_URL = "./bets_to_place.csv"; // <-- REAL bets file
 const SAFE_THRESHOLD = 65;
 const TOP_BETS_LIMIT = 10;
 
@@ -20,7 +21,6 @@ const spreadRateEl = document.getElementById("spreadRate");
 
 const topTbody = document.getElementById("topBetsTbody");
 const safeOnlyTop = document.getElementById("safeOnlyTop");
-
 const refreshBtn = document.getElementById("refreshBtn");
 
 // DVP hooks
@@ -39,6 +39,8 @@ let DVP_HEADERS = [];
 let DVP_DATA = [];
 let DVP_TEAM_KEY = null;
 let DVP_POS_KEY = null;
+
+let BETS_ROWS = []; // normalized bets rows: { game, bet, prob }
 
 // ==========================
 // HELPERS
@@ -67,6 +69,13 @@ function probClass(p) {
   if (p >= 70) return "prob-high";
   if (p >= 65) return "prob-mid";
   return "prob-low";
+}
+
+function toNumber(value) {
+  if (value == null) return NaN;
+  const cleaned = String(value).replace("%", "").trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : NaN;
 }
 
 // delimiter-aware parser: comma, tab, semicolon, or multi-spaces
@@ -116,38 +125,56 @@ function setHeroRates() {
   spreadRateEl.textContent = `${DEFAULT_SPREAD_RATE}%`;
 }
 
-// ==========================
-// BETS TO PLACE (placeholder, 10 rows)
-// ==========================
-function renderTopBets() {
-  const sample = [
-    { game: "LAL vs DEN", bet: "DEN ML", prob: 72 },
-    { game: "HOU vs DAL", bet: "HOU -1.5", prob: 68 },
-    { game: "NYK vs BOS", bet: "NYK +5.5", prob: 61 },
-    { game: "MIA vs ORL", bet: "MIA ML", prob: 70 },
-    { game: "GSW vs PHX", bet: "PHX +4.5", prob: 66 },
-    { game: "MIL vs CHI", bet: "MIL ML", prob: 69 },
-    { game: "CLE vs IND", bet: "CLE -2.5", prob: 65 },
-    { game: "DAL vs SAC", bet: "DAL ML", prob: 67 },
-    { game: "BOS vs TOR", bet: "BOS -3.5", prob: 71 },
-    { game: "OKC vs MEM", bet: "OKC +1.5", prob: 66 }
-  ];
+function findKey(headers, candidates) {
+  const lower = headers.map(h => h.toLowerCase());
+  for (const c of candidates) {
+    const idx = lower.findIndex(h => h === c || h.includes(c));
+    if (idx >= 0) return headers[idx];
+  }
+  return null;
+}
 
-  const filtered = safeOnlyTop?.checked
-    ? sample.filter(x => x.prob >= SAFE_THRESHOLD)
-    : sample;
+// ==========================
+// BETS TO PLACE (REAL FROM bets_to_place.csv)
+// ==========================
+function normalizeBets(headers, data) {
+  const gameKey = findKey(headers, ["game", "matchup", "teams"]);
+  const betKey  = findKey(headers, ["bet", "pick", "wager", "line"]);
+  const probKey = findKey(headers, ["prob", "probability", "chance", "confidence", "win"]);
 
+  return data.map(r => {
+    const game = gameKey ? r[gameKey] : "";
+    const bet = betKey ? r[betKey] : "";
+    const prob = probKey ? toNumber(r[probKey]) : NaN;
+
+    return {
+      game: game || "—",
+      bet: bet || "—",
+      prob: Number.isFinite(prob) ? prob : 0
+    };
+  }).filter(x => x.game !== "—" && x.bet !== "—");
+}
+
+function renderBetsToPlace() {
   topTbody.innerHTML = "";
 
-  if (!filtered.length) {
+  let rows = [...BETS_ROWS];
+
+  // sort best first
+  rows.sort((a, b) => b.prob - a.prob);
+
+  // apply toggle filter
+  if (safeOnlyTop?.checked) rows = rows.filter(r => r.prob >= SAFE_THRESHOLD);
+
+  // limit to top 10
+  rows = rows.slice(0, TOP_BETS_LIMIT);
+
+  if (!rows.length) {
     topTbody.innerHTML = `<tr><td colspan="3">No rows match this filter.</td></tr>`;
     return;
   }
 
-  filtered.sort((a, b) => b.prob - a.prob);
-  const top = filtered.slice(0, TOP_BETS_LIMIT);
-
-  topTbody.innerHTML = top.map(r => {
+  topTbody.innerHTML = rows.map(r => {
     const cls = probClass(r.prob);
     return `
       <tr>
@@ -157,6 +184,19 @@ function renderTopBets() {
       </tr>
     `;
   }).join("");
+}
+
+async function loadBetsCSV() {
+  const bust = `t=${Date.now()}`;
+  const res = await fetch(`${BETS_CSV_URL}?${bust}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`bets_to_place.csv fetch failed: ${res.status} ${res.statusText}`);
+
+  const text = await res.text();
+  const { headers, data } = parseCSV(text);
+  if (!headers.length) throw new Error("No headers detected in bets_to_place.csv.");
+
+  BETS_ROWS = normalizeBets(headers, data);
+  renderBetsToPlace();
 }
 
 // ==========================
@@ -193,7 +233,6 @@ function renderDvpTable() {
     return;
   }
 
-  // header row
   dvpThead.innerHTML = `
     <tr>
       ${DVP_HEADERS.map(h => `<th>${escapeHtml(h)}</th>`).join("")}
@@ -225,10 +264,28 @@ function applyDvpCompact() {
   const compact = !!dvpCompact?.checked;
 
   dvpTable.style.fontSize = compact ? "0.85rem" : "";
-
   dvpTable.querySelectorAll("td, th").forEach(cell => {
     cell.style.padding = compact ? "8px" : "";
   });
+}
+
+async function loadDvpCSV() {
+  const bust = `t=${Date.now()}`;
+  const res = await fetch(`${DVP_CSV_URL}?${bust}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`dvp.csv fetch failed: ${res.status} ${res.statusText}`);
+
+  const text = await res.text();
+  const { headers, data } = parseCSV(text);
+
+  DVP_HEADERS = headers;
+  DVP_DATA = data;
+
+  if (!headers.length) throw new Error("No headers detected in dvp.csv.");
+
+  detectDvpKeys(headers);
+  buildDvpFilters();
+  renderDvpTable();
+  applyDvpCompact();
 }
 
 // ==========================
@@ -237,51 +294,32 @@ function applyDvpCompact() {
 async function loadDashboard() {
   setTodayDate();
   setHeroRates();
-  statusText.textContent = "Loading dvp.csv…";
+  statusText.textContent = "Loading…";
 
   try {
-    const bust = `t=${Date.now()}`;
-    const res = await fetch(`${DVP_CSV_URL}?${bust}`, { cache: "no-store" });
-    if (!res.ok) throw new Error(`dvp.csv fetch failed: ${res.status} ${res.statusText}`);
+    // load both files
+    await Promise.all([loadDvpCSV(), loadBetsCSV()]);
 
-    const text = await res.text();
-    const { headers, data } = parseCSV(text);
-
-    DVP_HEADERS = headers;
-    DVP_DATA = data;
-
-    if (!headers.length) throw new Error("No headers detected in dvp.csv.");
-
-    detectDvpKeys(headers);
-    buildDvpFilters();
-    renderDvpTable();
-    applyDvpCompact();
-
-    statusText.textContent = `Loaded ${data.length} rows from dvp.csv.`;
-
+    statusText.textContent = `Loaded ${DVP_DATA.length} DvP rows and ${BETS_ROWS.length} bets.`;
   } catch (err) {
     console.error(err);
     statusText.textContent = `Error: ${err.message}`;
-    dvpThead.innerHTML = `<tr><th>DvP</th></tr>`;
-    dvpTbody.innerHTML = `<tr><td>Could not load dvp.csv</td></tr>`;
-  }
 
-  // Bets to Place
-  renderTopBets();
+    // fallbacks
+    if (topTbody) topTbody.innerHTML = `<tr><td colspan="3">Could not load bets_to_place.csv</td></tr>`;
+    if (dvpTbody) dvpTbody.innerHTML = `<tr><td>Could not load dvp.csv</td></tr>`;
+  }
 }
 
 // ==========================
 // EVENTS
 // ==========================
-safeOnlyTop?.addEventListener("change", renderTopBets);
+safeOnlyTop?.addEventListener("change", renderBetsToPlace);
 refreshBtn?.addEventListener("click", loadDashboard);
 
 dvpTeamSel?.addEventListener("change", renderDvpTable);
 dvpPosSel?.addEventListener("change", renderDvpTable);
-
-dvpCompact?.addEventListener("change", () => {
-  applyDvpCompact();
-});
+dvpCompact?.addEventListener("change", applyDvpCompact);
 
 // boot
 loadDashboard();
