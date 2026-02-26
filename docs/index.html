@@ -36,6 +36,7 @@
       </div>
     </section>
 
+    <!-- BEST PICKS -->
     <section class="panel">
       <div class="panelHeader">
         <h2 id="bestPicksTitle">Todays Best Picks</h2>
@@ -67,76 +68,40 @@
 
       <div class="subtle" id="statusLine"></div>
     </section>
-  </div>
 
-  <script src="./script.js"></script>
-</body>
-</html>
-
-    <!-- DVP (filters already built) -->
-    <section class="section">
-      <div class="section-head">
+    <!-- DVP -->
+    <section class="panel" style="margin-top:18px;">
+      <div class="panelHeader">
         <h2>DvP (Defense vs Position)</h2>
+        <div class="panelControls">
+          <label class="subtle" for="dvpTeam">Team</label>
+          <select id="dvpTeam"></select>
 
-        <div class="dvp-controls">
-          <label class="toggle">
-            Team
-            <select id="dvpTeam"></select>
-          </label>
+          <label class="subtle" for="dvpPosition">Position</label>
+          <select id="dvpPosition"></select>
 
-          <label class="toggle">
-            Position
-            <select id="dvpPosition"></select>
-          </label>
-
-          <label class="toggle">
+          <label class="subtle" style="display:flex;align-items:center;gap:8px;">
             <input type="checkbox" id="dvpCompact" />
             Compact view
           </label>
         </div>
       </div>
 
-      <div class="table-wrapper">
+      <div class="tableWrap">
         <table id="dvpTable">
           <thead id="dvpThead"></thead>
           <tbody id="dvpTbody"></tbody>
         </table>
       </div>
 
-      <p class="hint">This table is loaded directly from <code>dvp.csv</code>. Use filters to narrow results.</p>
+      <div class="subtle" id="dvpStatusLine"></div>
     </section>
 
-    <footer class="footer">
+    <footer class="footer" style="margin-top:22px;">
       <p>Probabilities are estimates based on your model + data. No guarantees—use responsibly.</p>
     </footer>
+  </div>
 
-  </main>
-
-  <!-- Inline CSS so you don’t have to edit style.css -->
-  <style>
-    .dvp-controls, .bets-controls{
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .dvp-controls select, .bets-controls select{
-      margin-left: 6px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: #151c3a;
-      color: #e8eefc;
-      border: 1px solid rgba(255,255,255,0.10);
-    }
-    /* Divider rows inside Bets table */
-    .section-row td{
-      background: rgba(255,255,255,0.06);
-      font-weight: 800;
-      letter-spacing: 0.2px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-  </style>
-
-  <script src="./app.js"></script>
+  <script src="./script.js"></script>
 </body>
 </html>
