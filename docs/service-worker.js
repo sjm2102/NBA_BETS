@@ -1,5 +1,5 @@
 // docs/service-worker.js
-const CACHE_NAME = "nba-bets-pwa-v3";
+const CACHE_NAME = "nba-bets-pwa-v4";
 
 const APP_SHELL = [
   "./",
@@ -7,13 +7,9 @@ const APP_SHELL = [
   "./style.css",
   "./script.js",
   "./manifest.webmanifest",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/maskable-192.png",
-  "./icons/maskable-512.png",
   "./gatekeeper_picks.csv",
   "./gatekeeper_picks.json",
-  "./dvp.csv"
+  "./dvp.csv",
 ];
 
 self.addEventListener("install", (event) => {
@@ -33,15 +29,17 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Network-first for data files
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
+  const pathname = url.pathname;
+
   const isDataFile =
-    url.pathname.endsWith("/gatekeeper_picks.csv") ||
-    url.pathname.endsWith("/gatekeeper_picks.json") ||
-    url.pathname.endsWith("/dvp.csv");
+    pathname.endsWith("/gatekeeper_picks.csv") ||
+    pathname.endsWith("/gatekeeper_picks.json") ||
+    pathname.endsWith("/dvp.csv") ||
+    pathname.endsWith("/site_metrics.json");
 
   if (isDataFile) {
     event.respondWith(
@@ -60,12 +58,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for app shell
+  // cache-first for shell
   event.respondWith(
     (async () => {
       const cached = await caches.match(event.request);
       if (cached) return cached;
-
       try {
         const fresh = await fetch(event.request);
         const cache = await caches.open(CACHE_NAME);
@@ -78,3 +75,4 @@ self.addEventListener("fetch", (event) => {
     })()
   );
 });
+
