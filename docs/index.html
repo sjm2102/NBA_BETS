@@ -3,77 +3,75 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NBA Bets Dashboard</title>
+  <title>NBA Bets - Today's Best Picks</title>
   <link rel="stylesheet" href="./style.css" />
-  <meta name="theme-color" content="#0b1020" />
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#0b1020">
+
+  <!-- iOS support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NBA Bets">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
 </head>
 
 <body>
-  <main class="container">
-
-    <!-- HERO -->
-    <section class="hero">
-      <div class="hero-top">
-        <div>
-          <h1>NBA Bets – Today’s Best Picks</h1>
-          <p class="hero-sub">Updated <span id="today-date"></span></p>
-        </div>
-
-        <div class="hero-actions">
-          <button class="btn" id="refreshBtn" type="button">Refresh</button>
-        </div>
+  <div class="container">
+    <header class="topbar">
+      <div>
+        <h1>NBA Bets – Today’s Best Picks</h1>
+        <div class="subtle" id="updatedAt">Updated: —</div>
       </div>
+      <button id="refreshBtn" class="btn">Refresh</button>
+    </header>
 
-      <div class="hero-stats">
-        <div class="stat-card">
-          <h3>Moneyline Hit Rate</h3>
-          <p class="stat-value" id="mlRate">—</p>
-        </div>
-        <div class="stat-card">
-          <h3>Spread Hit Rate</h3>
-          <p class="stat-value" id="spreadRate">—</p>
-        </div>
+    <section class="cards">
+      <div class="card">
+        <div class="cardTitle">Moneyline Hit Rate</div>
+        <div class="cardValue" id="mlHitRate">—</div>
       </div>
-
-      <p class="hero-note" id="statusText">Loading…</p>
+      <div class="card">
+        <div class="cardTitle">Spread Hit Rate</div>
+        <div class="cardValue" id="spreadHitRate">—</div>
+      </div>
     </section>
 
-    <!-- BETS TO PLACE -->
-    <section class="section">
-      <div class="section-head">
-        <h2>Bets to Place</h2>
-
-        <div class="bets-controls">
-          <label class="toggle">
-            Risk Profile
-            <select id="riskProfile">
-              <option value="balanced" selected>Balanced (≥ 65%)</option>
-              <option value="conservative">Conservative (≥ 70%)</option>
-              <option value="aggressive">Aggressive (≥ 60%)</option>
-              <option value="all">Show all</option>
-            </select>
-          </label>
+    <section class="panel">
+      <div class="panelHeader">
+        <h2 id="bestPicksTitle">Todays Best Picks</h2>
+        <div class="panelControls">
+          <label class="subtle" for="riskFilter">Risk Profile</label>
+          <select id="riskFilter">
+            <option value="all" selected>Show all</option>
+            <option value="safe">Safe (>= 1.0u)</option>
+            <option value="high">High Confidence</option>
+          </select>
         </div>
       </div>
 
-      <div class="table-wrapper">
-        <table>
+      <div class="tableWrap">
+        <table id="betsTable">
           <thead>
             <tr>
-              <th>Game</th>
+              <th>Bet Type</th>
               <th>Bet</th>
-              <th class="num">Chance to Hit</th>
-              <th class="num">Model Edge</th>
+              <th>Probability</th>
+              <th>Opponent</th>
+              <th>Confidence</th>
+              <th>Units</th>
             </tr>
           </thead>
-          <tbody id="topBetsTbody">
-            <!-- injected -->
-          </tbody>
+          <tbody></tbody>
         </table>
       </div>
 
-      <p class="hint">Shows Top 5 Moneyline + Top 5 Spread picks (filtered by your risk profile).</p>
+      <div class="subtle" id="statusLine"></div>
     </section>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
 
     <!-- DVP (filters already built) -->
     <section class="section">
