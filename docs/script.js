@@ -1,7 +1,4 @@
-// docs/script.js
-// Loads gatekeeper picks + DvP table (from dvp.csv).
-// Gatekeeper columns expected:
-//   bet_type, bet, probability_pct, opponent, confidence_label, recommended_units
+// docs/script.js (bulletproof header normalization + DvP)
 
 const GATEKEEPER_URL = "./gatekeeper_picks.csv";
 const DVP_URL = "./dvp.csv";
@@ -11,17 +8,34 @@ function stripBOM(s) {
   return (s || "").replace(/^\uFEFF/, "");
 }
 
+// Normalize header names into safe keys:
+// "Probability %" -> "probability_pct"
+// "recommended units" -> "recommended_units"
+function normKey(h) {
+  return stripBOM(String(h || ""))
+    .trim()
+    .toLowerCase()
+    .replace(/\u00A0/g, " ")          // non-breaking space
+    .replace(/[%]/g, "_pct")
+    .replace(/[^a-z0-9_]+/g, "_")     // anything weird -> underscore
+    .replace(/^_+|_+$/g, "");
+}
+
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
 
   const rawHeaders = lines[0].split(",").map(h => stripBOM(h).trim());
-  const headers = rawHeaders.map(h => h.toLowerCase()); // normalize keys
+  const headers = rawHeaders.map(h => ({ raw: h, norm: normKey(h) }));
 
   return lines.slice(1).filter(Boolean).map(line => {
     const values = line.split(",").map(v => v.trim());
     const row = {};
-    headers.forEach((h, i) => (row[h] = values[i] ?? ""));
+    headers.forEach((h, i) => {
+      const v = values[i] ?? "";
+      row[h.raw] = v;    // keep original
+      row[h.norm] = v;   // add normalized key
+    });
     return row;
   });
 }
@@ -63,7 +77,7 @@ function confidenceClass(label) {
 }
 
 async function fetchText(url) {
-  // cache-bust because you use a Service Worker
+  // cache-bust (critical with service worker / GitHub Pages)
   const bust = `${url}?ts=${Date.now()}`;
   const res = await fetch(bust, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to load ${url} (${res.status})`);
@@ -83,8 +97,8 @@ async function tryLoadMetrics() {
 }
 
 function applyRiskFilter(rows, mode) {
-  if (mode === "safe") return rows.filter(r => num(pick(r, ["recommended_units", "recommendedunits"])) >= 1.0);
-  if (mode === "high") return rows.filter(r => String(pick(r, ["confidence_label", "confidencelabel"])).toLowerCase() === "high");
+  if (mode === "safe") return rows.filter(r => num(pick(r, ["recommended_units", "recommended_units_pct", "units"])) >= 1.0);
+  if (mode === "high") return rows.filter(r => String(pick(r, ["confidence_label"])).toLowerCase() === "high");
   return rows;
 }
 
@@ -92,18 +106,27 @@ function renderBestPicks(rows, filterMode) {
   const tbody = document.querySelector("#betsTable tbody");
   const filtered = applyRiskFilter(rows, filterMode);
 
+  // DEBUG: show detected keys so we KNOW what the browser sees
+  const status = document.getElementById("statusLine");
+  if (rows.length) {
+    const keys = Object.keys(rows[0]).filter(k => !k.includes(" ")).slice(0, 30);
+    status.textContent = `Loaded ${rows.length} picks. Showing ${filtered.length}. Keys: ${keys.join(", ")}`;
+  } else {
+    status.textContent = "Loaded 0 picks.";
+  }
+
   if (!filtered.length) {
     tbody.innerHTML = `<tr><td colspan="6" class="muted">No picks to display.</td></tr>`;
-    return { total: rows.length, shown: 0 };
+    return;
   }
 
   tbody.innerHTML = filtered.map(r => {
     const betType = pick(r, ["bet_type", "bettype"]);
     const bet = pick(r, ["bet"]);
-    const prob = pick(r, ["probability_pct", "probability", "probabilitypct", "prob_pct"]);
+    const prob = pick(r, ["probability_pct", "probability", "prob_pct"]);
     const opp = pick(r, ["opponent", "opp"]);
-    const conf = pick(r, ["confidence_label", "confidencelabel"], "—");
-    const units = pick(r, ["recommended_units", "recommendedunits", "units"], "");
+    const conf = pick(r, ["confidence_label"], "—");
+    const units = pick(r, ["recommended_units", "units"]);
 
     return `
       <tr>
@@ -116,19 +139,17 @@ function renderBestPicks(rows, filterMode) {
       </tr>
     `;
   }).join("");
-
-  return { total: rows.length, shown: filtered.length };
 }
 
 // ---------------- DvP ----------------
 
 function normalizeDvp(raw) {
   return raw.map(r => ({
-    defense_team: String(pick(r, ["defense_team", "defenseteam", "team"])).toUpperCase(),
+    defense_team: String(pick(r, ["defense_team", "team"])).toUpperCase(),
     position: String(pick(r, ["position", "pos"])).toUpperCase(),
     value: num(pick(r, ["value"])),
     rank_pos: num(pick(r, ["rank_pos", "rankpos"])),
-    matchup_grade: String(pick(r, ["matchup_grade", "matchupgrade", "grade"])).toUpperCase(),
+    matchup_grade: String(pick(r, ["matchup_grade", "grade"])).toUpperCase(),
   })).filter(r => r.defense_team && r.position);
 }
 
@@ -190,9 +211,6 @@ function populateDvpFilters(dvp) {
 }
 
 async function refreshAll() {
-  const status = document.getElementById("statusLine");
-  status.textContent = "Loading picks...";
-
   await tryLoadMetrics();
 
   // Gatekeeper
@@ -200,8 +218,7 @@ async function refreshAll() {
   const rows = parseCSV(csv);
 
   const filterMode = document.getElementById("riskFilter").value;
-  const { total, shown } = renderBestPicks(rows, filterMode);
-  status.textContent = `Loaded ${total} picks. Showing ${shown}.`;
+  renderBestPicks(rows, filterMode);
 
   // Updated fallback
   const updatedAt = document.getElementById("updatedAt");
@@ -229,17 +246,8 @@ async function refreshAll() {
 }
 
 // Events
-document.getElementById("refreshBtn").addEventListener("click", () => {
-  refreshAll().catch(err => {
-    console.error(err);
-    document.getElementById("statusLine").textContent = "Could not load picks. Check gatekeeper_picks.csv path.";
-  });
-});
-
-document.getElementById("riskFilter").addEventListener("change", () => {
-  refreshAll().catch(console.error);
-});
-
+document.getElementById("refreshBtn").addEventListener("click", () => refreshAll().catch(console.error));
+document.getElementById("riskFilter").addEventListener("change", () => refreshAll().catch(console.error));
 document.getElementById("dvpTeam").addEventListener("change", () => refreshAll().catch(console.error));
 document.getElementById("dvpPosition").addEventListener("change", () => refreshAll().catch(console.error));
 document.getElementById("dvpCompact").addEventListener("change", () => refreshAll().catch(console.error));
