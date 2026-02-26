@@ -21,20 +21,29 @@ function normKey(h) {
     .replace(/^_+|_+$/g, "");
 }
 
+function detectDelimiter(headerLine) {
+  if (headerLine.includes(",")) return ",";
+  if (headerLine.includes(";")) return ";";
+  if (headerLine.includes("\t")) return "\t";
+  return ","; // fallback
+}
+
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
 
-  const rawHeaders = lines[0].split(",").map(h => stripBOM(h).trim());
+  const delim = detectDelimiter(lines[0]);
+
+  const rawHeaders = lines[0].split(delim).map(h => stripBOM(h).trim());
   const headers = rawHeaders.map(h => ({ raw: h, norm: normKey(h) }));
 
   return lines.slice(1).filter(Boolean).map(line => {
-    const values = line.split(",").map(v => v.trim());
+    const values = line.split(delim).map(v => v.trim());
     const row = {};
     headers.forEach((h, i) => {
       const v = values[i] ?? "";
-      row[h.raw] = v;    // keep original
-      row[h.norm] = v;   // add normalized key
+      row[h.raw] = v;
+      row[h.norm] = v;
     });
     return row;
   });
