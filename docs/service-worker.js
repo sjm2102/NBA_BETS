@@ -1,23 +1,18 @@
-// Simple PWA Service Worker for GitHub Pages
-// - Caches the app shell (HTML/CSS/JS/icons)
-// - Also caches the latest bets file when fetched
-// - Falls back to cache when offline
+// docs/service-worker.js
+const CACHE_NAME = "nba-bets-pwa-v3";
 
-const CACHE_NAME = "nba-bets-pwa-v2";
-
-// App shell files to cache
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./app.js",
+  "./script.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/maskable-192.png",
   "./icons/maskable-512.png",
-  "./bets_to_place.csv",
-  "./bets_to_place.json"
+  "./gatekeeper_picks.csv",
+  "./gatekeeper_picks.json",
   "./dvp.csv"
 ];
 
@@ -38,29 +33,27 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Network-first for data files, cache-first for app shell
+// Network-first for data files
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-
-  // Only handle same-origin requests
   if (url.origin !== self.location.origin) return;
 
   const isDataFile =
-    url.pathname.endsWith("/bets_to_place.csv") ||
-    url.pathname.endsWith("/bets_to_place.json");
+    url.pathname.endsWith("/gatekeeper_picks.csv") ||
+    url.pathname.endsWith("/gatekeeper_picks.json") ||
+    url.pathname.endsWith("/dvp.csv");
 
   if (isDataFile) {
-    // Network-first: try fresh data, fallback to cache
     event.respondWith(
       (async () => {
         try {
-          const fresh = await fetch(event.request);
+          const fresh = await fetch(event.request, { cache: "no-store" });
           const cache = await caches.open(CACHE_NAME);
           cache.put(event.request, fresh.clone());
           return fresh;
         } catch {
           const cached = await caches.match(event.request);
-          return cached || new Response("[]", { headers: { "Content-Type": "application/json" } });
+          return cached || new Response("", { status: 200 });
         }
       })()
     );
@@ -79,7 +72,6 @@ self.addEventListener("fetch", (event) => {
         cache.put(event.request, fresh.clone());
         return fresh;
       } catch {
-        // If offline and not in cache, fallback to index
         const fallback = await caches.match("./index.html");
         return fallback || new Response("Offline", { status: 503 });
       }
