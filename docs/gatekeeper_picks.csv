@@ -1,1 +1,11 @@
+bet_type	bet	probability_pct	opponent	confidence_label	recommended_units
+Moneyline	HOU ML	75.90%	SAC	High	2
+Moneyline	BOS ML	64.80%	DEN	Medium	1
+Moneyline	CLE ML	62.10%	MIL	Medium	1
+Spread	HOU +2.5	79.60%	SAC	High	2
+Spread	SAS +10.5	77.60%	TOR	High	2
+Spread	DET +10.5	77.40%	OKC	High	2
+Spread	BOS +5.5	75.20%	DEN	High	2
+Spread	GSW +10.5	73.90%	MEM	High	2
+Spread	CLE +5.5	73.00%	MIL	High	2
 
